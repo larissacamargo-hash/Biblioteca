@@ -1,0 +1,707 @@
+{
+  "entities": {
+    "AdminRole": {
+      "title": "AdminRole",
+      "description": "Authorized librarian administrator record.",
+      "type": "object",
+      "properties": {
+        "uid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the librarian.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "description": "Display name of the librarian.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "cargo": {
+          "type": "string",
+          "description": "Role title in the library.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of role creation."
+        }
+      },
+      "required": ["uid", "name", "cargo", "createdAt"]
+    },
+    "Book": {
+      "title": "Book",
+      "description": "Catalog book item with inventory counts and editorial metadata.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Document identifier.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "isbn": {
+          "type": "string",
+          "description": "ISBN identifier of the edition.",
+          "minLength": 3,
+          "maxLength": 40
+        },
+        "titulo": {
+          "type": "string",
+          "description": "Title of the book.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "autor": {
+          "type": "string",
+          "description": "Author name.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "categoria": {
+          "type": "string",
+          "description": "Literary genre category.",
+          "enum": [
+            "Mangás e HQs",
+            "Fantasia e Aventura",
+            "Romance",
+            "Suspense e Mistério",
+            "Literatura Clássica",
+            "Literatura Infantil",
+            "Ciências e Didáticos"
+          ],
+          "maxLength": 60
+        },
+        "ano": {
+          "type": "integer",
+          "description": "Publication year."
+        },
+        "edicao": {
+          "type": "string",
+          "description": "Edition label.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "localizacao": {
+          "type": "string",
+          "description": "Physical shelf location.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "totalExemplares": {
+          "type": "integer",
+          "description": "Total physical copies owned."
+        },
+        "disponiveis": {
+          "type": "integer",
+          "description": "Currently available physical copies."
+        },
+        "status": {
+          "type": "string",
+          "description": "Current inventory status.",
+          "enum": ["disponivel", "emprestado", "reservado", "em_transito"],
+          "maxLength": 30
+        },
+        "indicacaoFaixaEtaria": {
+          "type": "string",
+          "description": "Recommended age group.",
+          "maxLength": 40
+        },
+        "capaUrl": {
+          "type": "string",
+          "description": "Cover artwork URL or asset path.",
+          "maxLength": 500
+        },
+        "descricao": {
+          "type": "string",
+          "description": "Short summary of the book.",
+          "minLength": 1,
+          "maxLength": 1000
+        },
+        "sinopseDetalhada": {
+          "type": "string",
+          "description": "Extended narrative synopsis.",
+          "maxLength": 3000
+        },
+        "curiosidades": {
+          "type": "string",
+          "description": "Editorial notes and curiosities.",
+          "maxLength": 1500
+        },
+        "dataPrevistaChegada": {
+          "type": "string",
+          "description": "Expected arrival date for in-transit titles.",
+          "maxLength": 30
+        },
+        "catalogPublished": {
+          "type": "boolean",
+          "description": "Indicates the book is visible in the active reader catalog."
+        },
+        "lastSyncReservationId": {
+          "type": "string",
+          "description": "Reservation ID synchronized atomically during reader hold/cancel.",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdByUid": {
+          "type": "string",
+          "description": "UID of the librarian who cataloged the book.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "id",
+        "isbn",
+        "titulo",
+        "autor",
+        "categoria",
+        "ano",
+        "edicao",
+        "localizacao",
+        "totalExemplares",
+        "disponiveis",
+        "status",
+        "descricao",
+        "catalogPublished",
+        "createdByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "StudentPublic": {
+      "title": "StudentPublic",
+      "description": "Non-PII reader membership card and borrowing counters.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Student record ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerUid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the student owner or librarian seed.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "nome": {
+          "type": "string",
+          "description": "Reader full name.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "matricula": {
+          "type": "string",
+          "description": "Library registration code.",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "curso": {
+          "type": "string",
+          "description": "Reader profile or reading club group.",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "livrosAtivos": {
+          "type": "integer",
+          "description": "Number of active borrowed books."
+        },
+        "limiteEmprestimos": {
+          "type": "integer",
+          "description": "Maximum simultaneous loans allowed."
+        },
+        "statusConta": {
+          "type": "string",
+          "description": "Account standing.",
+          "enum": ["regular", "bloqueado_atraso"],
+          "maxLength": 30
+        },
+        "dataCadastro": {
+          "type": "string",
+          "description": "Registration date string (YYYY-MM-DD).",
+          "minLength": 8,
+          "maxLength": 30
+        },
+        "totalHistoricoEmprestimos": {
+          "type": "integer",
+          "description": "Lifetime count of books borrowed."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "id",
+        "ownerUid",
+        "nome",
+        "matricula",
+        "curso",
+        "livrosAtivos",
+        "limiteEmprestimos",
+        "statusConta",
+        "dataCadastro",
+        "totalHistoricoEmprestimos",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "StudentPrivate": {
+      "title": "StudentPrivate",
+      "description": "Isolated PII contact details for a reader.",
+      "type": "object",
+      "properties": {
+        "studentId": {
+          "type": "string",
+          "description": "Parent student document ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerUid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the owner.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "Reader contact email.",
+          "minLength": 3,
+          "maxLength": 160
+        },
+        "telefone": {
+          "type": "string",
+          "description": "Reader contact phone or WhatsApp.",
+          "maxLength": 40
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "studentId",
+        "ownerUid",
+        "email",
+        "telefone",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Loan": {
+      "title": "Loan",
+      "description": "Physical book loan circulation record (PII-free).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Loan identifier.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "livroId": {
+          "type": "string",
+          "description": "Referenced book ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "livroTitulo": {
+          "type": "string",
+          "description": "Snapshot of the book title.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "livroIsbn": {
+          "type": "string",
+          "description": "Snapshot of the book ISBN.",
+          "minLength": 3,
+          "maxLength": 40
+        },
+        "alunoId": {
+          "type": "string",
+          "description": "Referenced student ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerUid": {
+          "type": "string",
+          "description": "UID of the borrowing reader.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "alunoNome": {
+          "type": "string",
+          "description": "Reader display name.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "alunoMatricula": {
+          "type": "string",
+          "description": "Reader registration code.",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "dataEmprestimo": {
+          "type": "string",
+          "description": "Checkout date (YYYY-MM-DD).",
+          "minLength": 8,
+          "maxLength": 30
+        },
+        "dataPrevistaDevolucao": {
+          "type": "string",
+          "description": "Due date (YYYY-MM-DD).",
+          "minLength": 8,
+          "maxLength": 30
+        },
+        "dataDevolucao": {
+          "type": "string",
+          "description": "Actual return date (YYYY-MM-DD).",
+          "maxLength": 30
+        },
+        "status": {
+          "type": "string",
+          "description": "Loan lifecycle state.",
+          "enum": ["ativo", "atrasado", "devolvido"],
+          "maxLength": 20
+        },
+        "diasAtraso": {
+          "type": "integer",
+          "description": "Days past due."
+        },
+        "notificacaoEnviada": {
+          "type": "boolean",
+          "description": "Whether an overdue notice was sent."
+        },
+        "observacoes": {
+          "type": "string",
+          "description": "Circulation desk notes.",
+          "maxLength": 500
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "id",
+        "livroId",
+        "livroTitulo",
+        "livroIsbn",
+        "alunoId",
+        "ownerUid",
+        "alunoNome",
+        "alunoMatricula",
+        "dataEmprestimo",
+        "dataPrevistaDevolucao",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Reservation": {
+      "title": "Reservation",
+      "description": "Book hold or waiting list reservation record.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Reservation identifier.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "livroId": {
+          "type": "string",
+          "description": "Referenced book ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "livroTitulo": {
+          "type": "string",
+          "description": "Book title.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "livroIsbn": {
+          "type": "string",
+          "description": "Book ISBN.",
+          "maxLength": 40
+        },
+        "livroCapaUrl": {
+          "type": "string",
+          "description": "Book cover URL.",
+          "maxLength": 500
+        },
+        "alunoId": {
+          "type": "string",
+          "description": "Referenced student ID.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerUid": {
+          "type": "string",
+          "description": "Firebase Auth UID of the reserving reader.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "alunoNome": {
+          "type": "string",
+          "description": "Reader name.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "alunoMatricula": {
+          "type": "string",
+          "description": "Reader registration code.",
+          "minLength": 1,
+          "maxLength": 40
+        },
+        "alunoCurso": {
+          "type": "string",
+          "description": "Reader group or profile.",
+          "maxLength": 120
+        },
+        "dataReserva": {
+          "type": "string",
+          "description": "Reservation date (YYYY-MM-DD).",
+          "minLength": 8,
+          "maxLength": 30
+        },
+        "validadeReserva": {
+          "type": "string",
+          "description": "Hold expiration date (YYYY-MM-DD).",
+          "minLength": 8,
+          "maxLength": 30
+        },
+        "status": {
+          "type": "string",
+          "description": "Reservation status.",
+          "enum": ["ativa", "retirada", "cancelada"],
+          "maxLength": 20
+        },
+        "tipo": {
+          "type": "string",
+          "description": "Immediate desk hold vs waiting list.",
+          "enum": ["retirada_imediata", "fila_espera"],
+          "maxLength": 30
+        },
+        "avisadoPronto": {
+          "type": "boolean",
+          "description": "Whether reader was notified of desk readiness."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "id",
+        "livroId",
+        "livroTitulo",
+        "alunoId",
+        "ownerUid",
+        "alunoNome",
+        "alunoMatricula",
+        "dataReserva",
+        "validadeReserva",
+        "status",
+        "tipo",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "InterlibraryRequest": {
+      "title": "InterlibraryRequest",
+      "description": "Incoming book acquisition or interlibrary transfer request.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Request identifier.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "tipo": {
+          "type": "string",
+          "description": "Transfer vs new purchase.",
+          "enum": ["interbibliotecas", "nova_aquisicao"],
+          "maxLength": 30
+        },
+        "titulo": {
+          "type": "string",
+          "description": "Requested book title.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "autor": {
+          "type": "string",
+          "description": "Requested book author.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "origemUnidade": {
+          "type": "string",
+          "description": "Source library unit or publisher.",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "quantidade": {
+          "type": "integer",
+          "description": "Number of copies requested."
+        },
+        "dataSolicitacao": {
+          "type": "string",
+          "description": "Request creation date (YYYY-MM-DD).",
+          "minLength": 8,
+          "maxLength": 30
+        },
+        "previsaoChegada": {
+          "type": "string",
+          "description": "Expected arrival date (YYYY-MM-DD).",
+          "minLength": 8,
+          "maxLength": 30
+        },
+        "status": {
+          "type": "string",
+          "description": "Shipment status.",
+          "enum": ["solicitado", "em_transito", "entregue"],
+          "maxLength": 30
+        },
+        "solicitante": {
+          "type": "string",
+          "description": "Department or curator requesting the shipment.",
+          "minLength": 1,
+          "maxLength": 160
+        },
+        "observacao": {
+          "type": "string",
+          "description": "Optional shipment notes.",
+          "maxLength": 500
+        },
+        "libraryScope": {
+          "type": "string",
+          "description": "Scope key for query enforcement.",
+          "enum": ["bibliotech"],
+          "maxLength": 30
+        },
+        "createdByUid": {
+          "type": "string",
+          "description": "UID of the librarian who created the request.",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server creation timestamp."
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server update timestamp."
+        }
+      },
+      "required": [
+        "id",
+        "tipo",
+        "titulo",
+        "autor",
+        "origemUnidade",
+        "quantidade",
+        "dataSolicitacao",
+        "previsaoChegada",
+        "status",
+        "solicitante",
+        "libraryScope",
+        "createdByUid",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/admins/{adminUid}": {
+      "schema": { "$ref": "#/entities/AdminRole" },
+      "description": "Librarian administrators with management permissions."
+    },
+    "/books/{bookId}": {
+      "schema": { "$ref": "#/entities/Book" },
+      "description": "Library book catalog and real-time copy availability."
+    },
+    "/students/{studentId}": {
+      "schema": { "$ref": "#/entities/StudentPublic" },
+      "description": "Non-PII reader membership profiles and active loan counters."
+    },
+    "/students/{studentId}/private/{infoId}": {
+      "schema": { "$ref": "#/entities/StudentPrivate" },
+      "description": "Isolated PII contact details (email and phone) for a reader."
+    },
+    "/loans/{loanId}": {
+      "schema": { "$ref": "#/entities/Loan" },
+      "description": "Book loan records without PII."
+    },
+    "/reservations/{reservationId}": {
+      "schema": { "$ref": "#/entities/Reservation" },
+      "description": "Reader book reservations and waiting list queue."
+    },
+    "/requests/{requestId}": {
+      "schema": { "$ref": "#/entities/InterlibraryRequest" },
+      "description": "Incoming shipments and interlibrary transfer orders."
+    }
+  }
+}

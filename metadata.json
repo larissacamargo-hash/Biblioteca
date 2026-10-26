@@ -1,0 +1,6 @@
+{
+  "name": "Athenaeum - Biblioteca Pública & Acervo Literário",
+  "description": "Biblioteca clássica e centro literário público: gestão de acervo raro e contemporâneo, circulação de empréstimos, salão de leitura, membros e clube do livro.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

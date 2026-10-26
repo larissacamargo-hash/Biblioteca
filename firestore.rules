@@ -1,0 +1,668 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // =========================================================================
+    // GLOBAL SAFETY NET (Default-Deny Catch-All)
+    // =========================================================================
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // =========================================================================
+    // PRIMITIVE HELPERS
+    // =========================================================================
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedUser() {
+      return isSignedIn() && request.auth.token.email_verified == true;
+    }
+
+    // Static bootstrapped admin check (Zero DB reads — safe inside `allow list`)
+    function isBootstrappedAdmin() {
+      return isVerifiedUser() && request.auth.token.email == 'mariaeduardaxs091@gmail.com';
+    }
+
+    // Full admin check for single-document operations (`get`, `create`, `update`, `delete`)
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isVerifiedUser() &&
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    // =========================================================================
+    // VALIDATION BLUEPRINTS (Exact sync with firebase-blueprint.json)
+    // =========================================================================
+    function isValidAdminRole(data) {
+      return data.keys().hasAll(['uid', 'name', 'cargo', 'createdAt']) &&
+        data.keys().hasOnly(['uid', 'name', 'cargo', 'createdAt']) &&
+        isValidId(data.uid) &&
+        data.name is string && data.name.size() >= 1 && data.name.size() <= 120 &&
+        data.cargo is string && data.cargo.size() >= 1 && data.cargo.size() <= 120 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidBookCategory(cat) {
+      return cat is string && cat.size() <= 60 && (
+        cat == 'Mangás e HQs' ||
+        cat == 'Fantasia e Aventura' ||
+        cat == 'Romance' ||
+        cat == 'Suspense e Mistério' ||
+        cat == 'Literatura Clássica' ||
+        cat == 'Literatura Infantil' ||
+        cat == 'Ciências e Didáticos'
+      );
+    }
+
+    function isValidBookStatus(st) {
+      return st is string && st.size() <= 30 && (
+        st == 'disponivel' ||
+        st == 'emprestado' ||
+        st == 'reservado' ||
+        st == 'em_transito'
+      );
+    }
+
+    function isValidBook(data) {
+      return data.keys().hasAll([
+          'id', 'isbn', 'titulo', 'autor', 'categoria', 'ano', 'edicao',
+          'localizacao', 'totalExemplares', 'disponiveis', 'status',
+          'descricao', 'catalogPublished', 'createdByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'isbn', 'titulo', 'autor', 'categoria', 'ano', 'edicao',
+          'localizacao', 'totalExemplares', 'disponiveis', 'status',
+          'indicacaoFaixaEtaria', 'capaUrl', 'descricao', 'sinopseDetalhada',
+          'curiosidades', 'dataPrevistaChegada', 'catalogPublished',
+          'lastSyncReservationId', 'createdByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.isbn is string && data.isbn.size() >= 3 && data.isbn.size() <= 40 &&
+        data.titulo is string && data.titulo.size() >= 1 && data.titulo.size() <= 200 &&
+        data.autor is string && data.autor.size() >= 1 && data.autor.size() <= 160 &&
+        isValidBookCategory(data.categoria) &&
+        data.ano is int && data.ano >= -1000 && data.ano <= 2100 &&
+        data.edicao is string && data.edicao.size() >= 1 && data.edicao.size() <= 120 &&
+        data.localizacao is string && data.localizacao.size() >= 1 && data.localizacao.size() <= 160 &&
+        data.totalExemplares is int && data.totalExemplares >= 0 && data.totalExemplares <= 500 &&
+        data.disponiveis is int && data.disponiveis >= 0 && data.disponiveis <= data.totalExemplares &&
+        isValidBookStatus(data.status) &&
+        data.descricao is string && data.descricao.size() >= 1 && data.descricao.size() <= 1000 &&
+        data.catalogPublished is bool &&
+        isValidId(data.createdByUid) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp &&
+        (!('indicacaoFaixaEtaria' in data) || (data.indicacaoFaixaEtaria is string && data.indicacaoFaixaEtaria.size() <= 40)) &&
+        (!('capaUrl' in data) || (data.capaUrl is string && data.capaUrl.size() <= 500)) &&
+        (!('sinopseDetalhada' in data) || (data.sinopseDetalhada is string && data.sinopseDetalhada.size() <= 3000)) &&
+        (!('curiosidades' in data) || (data.curiosidades is string && data.curiosidades.size() <= 1500)) &&
+        (!('dataPrevistaChegada' in data) || (data.dataPrevistaChegada is string && data.dataPrevistaChegada.size() <= 30)) &&
+        (!('lastSyncReservationId' in data) || isValidId(data.lastSyncReservationId));
+    }
+
+    function isValidStudentPublic(data) {
+      return data.keys().hasAll([
+          'id', 'ownerUid', 'nome', 'matricula', 'curso',
+          'livrosAtivos', 'limiteEmprestimos', 'statusConta',
+          'dataCadastro', 'totalHistoricoEmprestimos', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'ownerUid', 'nome', 'matricula', 'curso',
+          'livrosAtivos', 'limiteEmprestimos', 'statusConta',
+          'dataCadastro', 'totalHistoricoEmprestimos', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.ownerUid) &&
+        data.nome is string && data.nome.size() >= 1 && data.nome.size() <= 160 &&
+        data.matricula is string && data.matricula.size() >= 1 && data.matricula.size() <= 40 &&
+        data.curso is string && data.curso.size() >= 1 && data.curso.size() <= 120 &&
+        data.livrosAtivos is int && data.livrosAtivos >= 0 && data.livrosAtivos <= 50 &&
+        data.limiteEmprestimos is int && data.limiteEmprestimos >= 1 && data.limiteEmprestimos <= 20 &&
+        data.statusConta is string && data.statusConta.size() <= 30 &&
+        (data.statusConta == 'regular' || data.statusConta == 'bloqueado_atraso') &&
+        data.dataCadastro is string && data.dataCadastro.size() >= 8 && data.dataCadastro.size() <= 30 &&
+        data.totalHistoricoEmprestimos is int && data.totalHistoricoEmprestimos >= 0 && data.totalHistoricoEmprestimos <= 10000 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidStudentPrivate(data) {
+      return data.keys().hasAll([
+          'studentId', 'ownerUid', 'email', 'telefone', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'studentId', 'ownerUid', 'email', 'telefone', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.studentId) &&
+        isValidId(data.ownerUid) &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        data.telefone is string && data.telefone.size() <= 40 &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidLoan(data) {
+      return data.keys().hasAll([
+          'id', 'livroId', 'livroTitulo', 'livroIsbn',
+          'alunoId', 'ownerUid', 'alunoNome', 'alunoMatricula',
+          'dataEmprestimo', 'dataPrevistaDevolucao', 'status',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'livroId', 'livroTitulo', 'livroIsbn',
+          'alunoId', 'ownerUid', 'alunoNome', 'alunoMatricula',
+          'dataEmprestimo', 'dataPrevistaDevolucao', 'dataDevolucao',
+          'status', 'diasAtraso', 'notificacaoEnviada', 'observacoes',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.livroId) &&
+        data.livroTitulo is string && data.livroTitulo.size() >= 1 && data.livroTitulo.size() <= 200 &&
+        data.livroIsbn is string && data.livroIsbn.size() >= 3 && data.livroIsbn.size() <= 40 &&
+        isValidId(data.alunoId) &&
+        isValidId(data.ownerUid) &&
+        data.alunoNome is string && data.alunoNome.size() >= 1 && data.alunoNome.size() <= 160 &&
+        data.alunoMatricula is string && data.alunoMatricula.size() >= 1 && data.alunoMatricula.size() <= 40 &&
+        data.dataEmprestimo is string && data.dataEmprestimo.size() >= 8 && data.dataEmprestimo.size() <= 30 &&
+        data.dataPrevistaDevolucao is string && data.dataPrevistaDevolucao.size() >= 8 && data.dataPrevistaDevolucao.size() <= 30 &&
+        data.status is string && data.status.size() <= 20 &&
+        (data.status == 'ativo' || data.status == 'atrasado' || data.status == 'devolvido') &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp &&
+        (!('dataDevolucao' in data) || (data.dataDevolucao is string && data.dataDevolucao.size() <= 30)) &&
+        (!('diasAtraso' in data) || (data.diasAtraso is int && data.diasAtraso >= 0 && data.diasAtraso <= 3650)) &&
+        (!('notificacaoEnviada' in data) || (data.notificacaoEnviada is bool)) &&
+        (!('observacoes' in data) || (data.observacoes is string && data.observacoes.size() <= 500));
+    }
+
+    function isValidReservation(data) {
+      return data.keys().hasAll([
+          'id', 'livroId', 'livroTitulo', 'alunoId', 'ownerUid',
+          'alunoNome', 'alunoMatricula', 'dataReserva', 'validadeReserva',
+          'status', 'tipo', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'livroId', 'livroTitulo', 'livroIsbn', 'livroCapaUrl',
+          'alunoId', 'ownerUid', 'alunoNome', 'alunoMatricula', 'alunoCurso',
+          'dataReserva', 'validadeReserva', 'status', 'tipo', 'avisadoPronto',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.livroId) &&
+        data.livroTitulo is string && data.livroTitulo.size() >= 1 && data.livroTitulo.size() <= 200 &&
+        isValidId(data.alunoId) &&
+        isValidId(data.ownerUid) &&
+        data.alunoNome is string && data.alunoNome.size() >= 1 && data.alunoNome.size() <= 160 &&
+        data.alunoMatricula is string && data.alunoMatricula.size() >= 1 && data.alunoMatricula.size() <= 40 &&
+        data.dataReserva is string && data.dataReserva.size() >= 8 && data.dataReserva.size() <= 30 &&
+        data.validadeReserva is string && data.validadeReserva.size() >= 8 && data.validadeReserva.size() <= 30 &&
+        data.status is string && data.status.size() <= 20 &&
+        (data.status == 'ativa' || data.status == 'retirada' || data.status == 'cancelada') &&
+        data.tipo is string && data.tipo.size() <= 30 &&
+        (data.tipo == 'retirada_imediata' || data.tipo == 'fila_espera') &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp &&
+        (!('livroIsbn' in data) || (data.livroIsbn is string && data.livroIsbn.size() <= 40)) &&
+        (!('livroCapaUrl' in data) || (data.livroCapaUrl is string && data.livroCapaUrl.size() <= 500)) &&
+        (!('alunoCurso' in data) || (data.alunoCurso is string && data.alunoCurso.size() <= 120)) &&
+        (!('avisadoPronto' in data) || (data.avisadoPronto is bool));
+    }
+
+    function isValidRequest(data) {
+      return data.keys().hasAll([
+          'id', 'tipo', 'titulo', 'autor', 'origemUnidade', 'quantidade',
+          'dataSolicitacao', 'previsaoChegada', 'status', 'solicitante',
+          'libraryScope', 'createdByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'tipo', 'titulo', 'autor', 'origemUnidade', 'quantidade',
+          'dataSolicitacao', 'previsaoChegada', 'status', 'solicitante',
+          'observacao', 'libraryScope', 'createdByUid', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.tipo is string && data.tipo.size() <= 30 &&
+        (data.tipo == 'interbibliotecas' || data.tipo == 'nova_aquisicao') &&
+        data.titulo is string && data.titulo.size() >= 1 && data.titulo.size() <= 200 &&
+        data.autor is string && data.autor.size() >= 1 && data.autor.size() <= 160 &&
+        data.origemUnidade is string && data.origemUnidade.size() >= 1 && data.origemUnidade.size() <= 200 &&
+        data.quantidade is int && data.quantidade >= 1 && data.quantidade <= 200 &&
+        data.dataSolicitacao is string && data.dataSolicitacao.size() >= 8 && data.dataSolicitacao.size() <= 30 &&
+        data.previsaoChegada is string && data.previsaoChegada.size() >= 8 && data.previsaoChegada.size() <= 30 &&
+        data.status is string && data.status.size() <= 30 &&
+        (data.status == 'solicitado' || data.status == 'em_transito' || data.status == 'entregue') &&
+        data.solicitante is string && data.solicitante.size() >= 1 && data.solicitante.size() <= 160 &&
+        data.libraryScope is string && data.libraryScope.size() <= 30 && data.libraryScope == 'bibliotech' &&
+        isValidId(data.createdByUid) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp &&
+        (!('observacao' in data) || (data.observacao is string && data.observacao.size() <= 500));
+    }
+
+    // =========================================================================
+    // 1. ADMINS COLLECTION (/admins/{adminUid})
+    // =========================================================================
+    match /admins/{adminUid} {
+      allow get: if isVerifiedUser() && isValidId(adminUid) && (
+        request.auth.uid == adminUid || isBootstrappedAdmin()
+      );
+      allow list: if false;
+      allow create: if isBootstrappedAdmin() &&
+        isValidId(adminUid) &&
+        isValidAdminRole(incoming()) &&
+        incoming().uid == adminUid &&
+        incoming().createdAt == request.time;
+      allow update: if false;
+      allow delete: if isBootstrappedAdmin() && isValidId(adminUid);
+    }
+
+    // =========================================================================
+    // 2. BOOKS COLLECTION (/books/{bookId})
+    // =========================================================================
+    match /books/{bookId} {
+      allow get: if isVerifiedUser() && isValidId(bookId) && (
+        existing().catalogPublished == true || isAdmin()
+      );
+      allow list: if isVerifiedUser() && resource.data.catalogPublished == true;
+
+      allow create: if isVerifiedUser() &&
+        isValidId(bookId) &&
+        isValidBook(incoming()) &&
+        incoming().id == bookId &&
+        incoming().createdByUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+
+      allow update: if (
+        isVerifiedUser() &&
+        isValidId(bookId) &&
+        isValidBook(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().createdByUid == existing().createdByUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          // Action 1: Librarian Full Inventory / Catalog Management
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'isbn', 'titulo', 'autor', 'categoria', 'ano', 'edicao',
+              'localizacao', 'totalExemplares', 'disponiveis', 'status',
+              'indicacaoFaixaEtaria', 'capaUrl', 'descricao', 'sinopseDetalhada',
+              'curiosidades', 'dataPrevistaChegada', 'catalogPublished',
+              'lastSyncReservationId', 'updatedAt'
+            ]) &&
+            isAdmin()
+          ) ||
+          // Action 2: Reader Atomic Hold Sync (Immediate or Waitlist)
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'disponiveis', 'status', 'lastSyncReservationId', 'updatedAt'
+            ]) &&
+            ('lastSyncReservationId' in incoming()) &&
+            (
+              (
+                existing().disponiveis > 0 &&
+                incoming().disponiveis == existing().disponiveis - 1 &&
+                (incoming().disponiveis == 0 ? incoming().status == 'reservado' : incoming().status == existing().status)
+              ) ||
+              (
+                existing().disponiveis == 0 &&
+                incoming().disponiveis == 0 &&
+                (incoming().status == 'reservado' || incoming().status == existing().status)
+              )
+            ) &&
+            existsAfter(/databases/$(database)/documents/reservations/$(incoming().lastSyncReservationId)) &&
+            getAfter(/databases/$(database)/documents/reservations/$(incoming().lastSyncReservationId)).data.livroId == bookId &&
+            getAfter(/databases/$(database)/documents/reservations/$(incoming().lastSyncReservationId)).data.ownerUid == request.auth.uid &&
+            getAfter(/databases/$(database)/documents/reservations/$(incoming().lastSyncReservationId)).data.status == 'ativa' &&
+            getAfter(/databases/$(database)/documents/reservations/$(incoming().lastSyncReservationId)).data.updatedAt == request.time
+          ) ||
+          // Action 3: Reader Atomic Cancellation Stock Restore
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'disponiveis', 'status', 'lastSyncReservationId', 'updatedAt'
+            ]) &&
+            ('lastSyncReservationId' in incoming()) &&
+            (
+              (
+                incoming().disponiveis == existing().disponiveis + 1 &&
+                incoming().disponiveis <= existing().totalExemplares &&
+                incoming().status == 'disponivel'
+              ) ||
+              (
+                incoming().disponiveis == existing().disponiveis &&
+                (
+                  incoming().status == existing().status ||
+                  incoming().status == 'disponivel' ||
+                  incoming().status == 'emprestado' ||
+                  incoming().status == 'reservado'
+                )
+              )
+            ) &&
+            existsAfter(/databases/$(database)/documents/reservations/$(incoming().lastSyncReservationId)) &&
+            getAfter(/databases/$(database)/documents/reservations/$(incoming().lastSyncReservationId)).data.livroId == bookId &&
+            getAfter(/databases/$(database)/documents/reservations/$(incoming().lastSyncReservationId)).data.ownerUid == request.auth.uid &&
+            getAfter(/databases/$(database)/documents/reservations/$(incoming().lastSyncReservationId)).data.status == 'cancelada' &&
+            getAfter(/databases/$(database)/documents/reservations/$(incoming().lastSyncReservationId)).data.updatedAt == request.time
+          )
+        )
+      );
+
+      allow delete: if isVerifiedUser() && isValidId(bookId) && isAdmin();
+    }
+
+    // =========================================================================
+    // 3. STUDENTS PUBLIC COLLECTION (/students/{studentId}) — Non-PII
+    // =========================================================================
+    match /students/{studentId} {
+      allow get: if isVerifiedUser() && isValidId(studentId) && (
+        existing().ownerUid == request.auth.uid || isAdmin()
+      );
+      allow list: if isVerifiedUser() && (
+        isBootstrappedAdmin() || resource.data.ownerUid == request.auth.uid
+      );
+
+      allow create: if isVerifiedUser() &&
+        isValidId(studentId) &&
+        isValidStudentPublic(incoming()) &&
+        incoming().id == studentId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (
+          (
+            studentId == request.auth.uid &&
+            incoming().ownerUid == request.auth.uid &&
+            incoming().livrosAtivos == 0 &&
+            incoming().limiteEmprestimos == 4 &&
+            incoming().statusConta == 'regular' &&
+            incoming().totalHistoricoEmprestimos == 0
+          ) ||
+          isAdmin()
+        );
+
+      allow update: if (
+        isVerifiedUser() &&
+        isValidId(studentId) &&
+        isValidStudentPublic(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().ownerUid == existing().ownerUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          // Action 1: Reader Updating Own Display Name or Club Profile Only
+          (
+            existing().ownerUid == request.auth.uid &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['nome', 'curso', 'updatedAt'])
+          ) ||
+          // Action 2: Admin Full Student Circulation & Account Update
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'nome', 'matricula', 'curso', 'livrosAtivos',
+              'limiteEmprestimos', 'statusConta', 'totalHistoricoEmprestimos', 'updatedAt'
+            ]) &&
+            isAdmin()
+          )
+        )
+      );
+
+      allow delete: if isVerifiedUser() && isValidId(studentId) && isAdmin();
+
+      // =======================================================================
+      // 4. STUDENT PRIVATE SUBCOLLECTION (/students/{studentId}/private/{infoId})
+      //    Pillar 1 Master Gate + Pillar 6 PII Isolation
+      // =======================================================================
+      match /private/{infoId} {
+        allow get: if isVerifiedUser() &&
+          isValidId(studentId) &&
+          isValidId(infoId) &&
+          infoId == 'info' &&
+          exists(/databases/$(database)/documents/students/$(studentId)) &&
+          (
+            get(/databases/$(database)/documents/students/$(studentId)).data.ownerUid == request.auth.uid ||
+            isAdmin()
+          );
+
+        allow list: if false;
+
+        allow create: if isVerifiedUser() &&
+          isValidId(studentId) &&
+          isValidId(infoId) &&
+          infoId == 'info' &&
+          isValidStudentPrivate(incoming()) &&
+          incoming().studentId == studentId &&
+          incoming().createdAt == request.time &&
+          incoming().updatedAt == request.time &&
+          (
+            (
+              incoming().ownerUid == request.auth.uid &&
+              existsAfter(/databases/$(database)/documents/students/$(studentId)) &&
+              getAfter(/databases/$(database)/documents/students/$(studentId)).data.ownerUid == request.auth.uid
+            ) ||
+            (
+              existsAfter(/databases/$(database)/documents/students/$(studentId)) &&
+              isAdmin()
+            )
+          );
+
+        allow update: if (
+          isVerifiedUser() &&
+          isValidId(studentId) &&
+          isValidId(infoId) &&
+          infoId == 'info' &&
+          isValidStudentPrivate(incoming()) &&
+          incoming().studentId == existing().studentId &&
+          incoming().ownerUid == existing().ownerUid &&
+          incoming().createdAt == existing().createdAt &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['email', 'telefone', 'updatedAt']) &&
+          exists(/databases/$(database)/documents/students/$(studentId)) &&
+          (
+            (
+              existing().ownerUid == request.auth.uid &&
+              get(/databases/$(database)/documents/students/$(studentId)).data.ownerUid == request.auth.uid
+            ) ||
+            isAdmin()
+          )
+        );
+
+        allow delete: if isVerifiedUser() &&
+          isValidId(studentId) &&
+          isValidId(infoId) &&
+          exists(/databases/$(database)/documents/students/$(studentId)) &&
+          isAdmin();
+      }
+    }
+
+    // =========================================================================
+    // 5. LOANS COLLECTION (/loans/{loanId})
+    // =========================================================================
+    match /loans/{loanId} {
+      allow get: if isVerifiedUser() && isValidId(loanId) && (
+        existing().ownerUid == request.auth.uid || isAdmin()
+      );
+      allow list: if isVerifiedUser() && (
+        isBootstrappedAdmin() || resource.data.ownerUid == request.auth.uid
+      );
+
+      allow create: if isVerifiedUser() &&
+        isValidId(loanId) &&
+        isValidLoan(incoming()) &&
+        incoming().id == loanId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isAdmin() &&
+        existsAfter(/databases/$(database)/documents/books/$(incoming().livroId)) &&
+        existsAfter(/databases/$(database)/documents/students/$(incoming().alunoId));
+
+      allow update: if (
+        isVerifiedUser() &&
+        isValidId(loanId) &&
+        isValidLoan(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().livroId == existing().livroId &&
+        incoming().alunoId == existing().alunoId &&
+        incoming().ownerUid == existing().ownerUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          // Action 1: Return Active or Overdue Loan (locks into 'devolvido')
+          (
+            existing().status != 'devolvido' &&
+            incoming().status == 'devolvido' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'dataDevolucao', 'updatedAt']) &&
+            isAdmin()
+          ) ||
+          // Action 2: Send Overdue Notice
+          (
+            existing().status != 'devolvido' &&
+            incoming().notificacaoEnviada == true &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['notificacaoEnviada', 'diasAtraso', 'status', 'updatedAt']) &&
+            isAdmin()
+          ) ||
+          // Action 3: Admin Override / Administrative Correction
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'status', 'dataDevolucao', 'diasAtraso', 'notificacaoEnviada', 'observacoes', 'updatedAt'
+            ]) &&
+            isAdmin()
+          )
+        )
+      );
+
+      allow delete: if isVerifiedUser() && isValidId(loanId) && isAdmin();
+    }
+
+    // =========================================================================
+    // 6. RESERVATIONS COLLECTION (/reservations/{reservationId})
+    // =========================================================================
+    match /reservations/{reservationId} {
+      allow get: if isVerifiedUser() && isValidId(reservationId) && (
+        existing().ownerUid == request.auth.uid || isAdmin()
+      );
+      allow list: if isVerifiedUser() && (
+        isBootstrappedAdmin() || resource.data.ownerUid == request.auth.uid
+      );
+
+      allow create: if isVerifiedUser() &&
+        isValidId(reservationId) &&
+        isValidReservation(incoming()) &&
+        incoming().id == reservationId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        (
+          // Reader Self-Reservation (Requires active regular student & atomic book sync)
+          (
+            incoming().ownerUid == request.auth.uid &&
+            incoming().status == 'ativa' &&
+            exists(/databases/$(database)/documents/students/$(incoming().alunoId)) &&
+            get(/databases/$(database)/documents/students/$(incoming().alunoId)).data.ownerUid == request.auth.uid &&
+            get(/databases/$(database)/documents/students/$(incoming().alunoId)).data.statusConta == 'regular' &&
+            exists(/databases/$(database)/documents/books/$(incoming().livroId)) &&
+            getAfter(/databases/$(database)/documents/books/$(incoming().livroId)).data.lastSyncReservationId == reservationId &&
+            getAfter(/databases/$(database)/documents/books/$(incoming().livroId)).data.updatedAt == request.time
+          ) ||
+          // Admin Seed / Desk Creation
+          (
+            isAdmin() &&
+            existsAfter(/databases/$(database)/documents/books/$(incoming().livroId)) &&
+            existsAfter(/databases/$(database)/documents/students/$(incoming().alunoId))
+          )
+        );
+
+      allow update: if (
+        isVerifiedUser() &&
+        isValidId(reservationId) &&
+        isValidReservation(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().livroId == existing().livroId &&
+        incoming().alunoId == existing().alunoId &&
+        incoming().ownerUid == existing().ownerUid &&
+        incoming().tipo == existing().tipo &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          // Action 1: Reader Cancels Own Active Reservation (Terminal lock prevents re-opening; atomic book sync required)
+          (
+            existing().status == 'ativa' &&
+            existing().ownerUid == request.auth.uid &&
+            incoming().status == 'cancelada' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) &&
+            getAfter(/databases/$(database)/documents/books/$(existing().livroId)).data.lastSyncReservationId == reservationId &&
+            getAfter(/databases/$(database)/documents/books/$(existing().livroId)).data.updatedAt == request.time
+          ) ||
+          // Action 2: Librarian Sends Ready Notification
+          (
+            existing().status == 'ativa' &&
+            incoming().avisadoPronto == true &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['avisadoPronto', 'updatedAt']) &&
+            isAdmin()
+          ) ||
+          // Action 3: Librarian Fulfills or Cancels Reservation (or Admin state override)
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'avisadoPronto', 'updatedAt']) &&
+            isAdmin()
+          )
+        )
+      );
+
+      allow delete: if isVerifiedUser() && isValidId(reservationId) && isAdmin();
+    }
+
+    // =========================================================================
+    // 7. INTERLIBRARY REQUESTS COLLECTION (/requests/{requestId})
+    // =========================================================================
+    match /requests/{requestId} {
+      allow get: if isVerifiedUser() && isValidId(requestId) && isAdmin();
+      allow list: if isBootstrappedAdmin() && resource.data.libraryScope == 'bibliotech';
+
+      allow create: if isVerifiedUser() &&
+        isValidId(requestId) &&
+        isValidRequest(incoming()) &&
+        incoming().id == requestId &&
+        incoming().createdByUid == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        isAdmin();
+
+      allow update: if (
+        isVerifiedUser() &&
+        isValidId(requestId) &&
+        isValidRequest(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().createdByUid == existing().createdByUid &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        (
+          // Action 1: Standard Non-Terminal Shipment Status Progression
+          (
+            existing().status != 'entregue' &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt']) &&
+            isAdmin()
+          ) ||
+          // Action 2: Admin Override
+          (
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'previsaoChegada', 'observacao', 'updatedAt']) &&
+            isAdmin()
+          )
+        )
+      );
+
+      allow delete: if isVerifiedUser() && isValidId(requestId) && isAdmin();
+    }
+  }
+}
