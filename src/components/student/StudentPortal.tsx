@@ -212,7 +212,7 @@ export const StudentPortal: React.FC = () => {
         <div className="lg:col-span-5 relative min-h-[220px] lg:min-h-full bg-[#0E121B]">
           {!heroImgError ? (
             <img
-              src="/src/assets/images/modern_youth_library_lounge_1793013070284.jpg"
+              src="/images/modern_youth_library_lounge_1793013070284.jpg"
               alt="Lounge contemporâneo de leitura jovem"
               referrerPolicy="no-referrer"
               onError={() => setHeroImgError(true)}

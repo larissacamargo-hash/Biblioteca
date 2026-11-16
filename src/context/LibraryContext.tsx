@@ -146,9 +146,18 @@ const LibraryContext = createContext<LibraryContextType | undefined>(undefined);
 
 const PORTAL_MODE_KEY = 'bibliotech_portal_mode_v1';
 
+function normalizeAssetUrl(url?: string): string | undefined {
+  if (!url) return undefined;
+  if (url.startsWith('/src/assets/images/')) {
+    return url.replace('/src/assets/images/', '/images/');
+  }
+  return url;
+}
+
 function buildBookFirestoreDoc(book: Book, createdByUid: string) {
   const total = clampInt(book.totalExemplares, 0, 500);
   const disp = clampInt(book.disponiveis, 0, total);
+  const normalizedCover = normalizeAssetUrl(book.capaUrl);
   return stripUndefined({
     id: sanitizeId(book.id, 'b'),
     isbn: sanitizeString(book.isbn, 40, '978-0000000000'),
@@ -164,7 +173,7 @@ function buildBookFirestoreDoc(book: Book, createdByUid: string) {
     indicacaoFaixaEtaria: book.indicacaoFaixaEtaria
       ? sanitizeString(book.indicacaoFaixaEtaria, 40)
       : undefined,
-    capaUrl: book.capaUrl ? sanitizeString(book.capaUrl, 500) : undefined,
+    capaUrl: normalizedCover ? sanitizeString(normalizedCover, 500) : undefined,
     descricao: sanitizeString(book.descricao, 1000, 'Obra integrante do catálogo Bibliotech.'),
     sinopseDetalhada: book.sinopseDetalhada
       ? sanitizeString(book.sinopseDetalhada, 3000)
@@ -457,7 +466,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
             disponiveis: data.disponiveis,
             status: data.status,
             indicacaoFaixaEtaria: data.indicacaoFaixaEtaria,
-            capaUrl: data.capaUrl,
+            capaUrl: normalizeAssetUrl(data.capaUrl),
             descricao: data.descricao,
             sinopseDetalhada: data.sinopseDetalhada,
             curiosidades: data.curiosidades,
@@ -633,7 +642,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
             livroId: data.livroId,
             livroTitulo: data.livroTitulo,
             livroIsbn: data.livroIsbn,
-            livroCapaUrl: data.livroCapaUrl,
+            livroCapaUrl: normalizeAssetUrl(data.livroCapaUrl),
             alunoId: data.alunoId,
             alunoNome: data.alunoNome,
             alunoMatricula: data.alunoMatricula,
@@ -833,6 +842,28 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         typeof err === 'object' && err !== null && 'code' in err
           ? String((err as { code?: string }).code)
           : '';
+      const host = typeof window !== 'undefined' ? window.location.hostname : '';
+
+      if (code === 'auth/unauthorized-domain') {
+        return {
+          success: false,
+          message: `Domínio não autorizado no Firebase (auth/unauthorized-domain). Adicione "${host}" em Authentication > Settings > Authorized domains no Firebase Console.`,
+        };
+      }
+      if (code === 'auth/operation-not-allowed') {
+        return {
+          success: false,
+          message:
+            'Provedor Google desativado neste projeto Firebase (auth/operation-not-allowed). Ative o login com Google no Firebase Console.',
+        };
+      }
+      if (code === 'auth/network-request-failed') {
+        return {
+          success: false,
+          message:
+            'Falha de conexão ao tentar autenticar com Google (auth/network-request-failed). Verifique sua internet ou bloqueadores.',
+        };
+      }
       if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
         return {
           success: false,
@@ -847,7 +878,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
       return {
         success: false,
-        message: 'Não foi possível concluir o login com Google. Tente novamente.',
+        message: `Não foi possível concluir o login com Google${code ? ` (${code})` : ''}. Tente novamente.`,
       };
     } finally {
       setIsAuthenticating(false);

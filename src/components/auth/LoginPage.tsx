@@ -35,7 +35,7 @@ export const LoginPage: React.FC = () => {
         <div className="lg:col-span-7 relative min-h-[300px] lg:min-h-[640px] flex flex-col justify-between p-8 sm:p-12 overflow-hidden bg-[#0E121B]">
           {!heroImgError ? (
             <img
-              src="/src/assets/images/editorial_books_showcase_1793013071050.jpg"
+              src="/images/editorial_books_showcase_1793013071050.jpg"
               alt="Coleção contemporânea de livros jovens, fantasia e mangás"
               referrerPolicy="no-referrer"
               onError={() => setHeroImgError(true)}
@@ -132,7 +132,19 @@ export const LoginPage: React.FC = () => {
             {errorMsg && (
               <div className="p-3.5 bg-rose-950/50 border border-rose-500/30 rounded-xl text-xs text-rose-200 flex items-start gap-2.5">
                 <AlertCircle className="w-4 h-4 text-rose-400 shrink-0 mt-0.5" />
-                <span className="leading-relaxed">{errorMsg}</span>
+                <div className="space-y-1.5 leading-relaxed">
+                  <p>{errorMsg}</p>
+                  {errorMsg.includes('unauthorized-domain') && (
+                    <a
+                      href="https://console.firebase.google.com/project/gen-lang-client-0083338581/authentication/settings"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-block font-semibold text-white underline underline-offset-2 hover:text-[#FF7A59]"
+                    >
+                      Abrir Domínios Autorizados no Firebase Console
+                    </a>
+                  )}
+                </div>
               </div>
             )}
 

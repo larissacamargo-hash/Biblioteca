@@ -20,7 +20,7 @@ export const INITIAL_BOOKS: Book[] = [
     disponiveis: 4,
     status: 'disponivel',
     indicacaoFaixaEtaria: '14+ anos',
-    capaUrl: '/src/assets/images/cover_manga_jujutsu_1792416923739.jpg',
+    capaUrl: '/images/cover_manga_jujutsu_1792416923739.jpg',
     descricao: 'Yuji Itadori engole um talismã amaldiçoado lendário para salvar seus amigos e passa a dividir o corpo com Ryomen Sukuna, o Rei das Maldições.',
     sinopseDetalhada:
       'Apesar do talento atlético fora do comum, Yuji Itadori prefere passar os dias no Clube de Ocultismo. Tudo muda quando um espírito amaldiçoado real ataca seus colegas e ele engole um dos dedos selados de Ryomen Sukuna. Agora matriculado na Escola Técnica de Jujutsu de Tóquio sob tutela de Satoru Gojo, Yuji precisa encontrar e destruir todos os fragmentos restantes da maldição.',
@@ -40,7 +40,7 @@ export const INITIAL_BOOKS: Book[] = [
     disponiveis: 2,
     status: 'disponivel',
     indicacaoFaixaEtaria: '16+ anos',
-    capaUrl: '/src/assets/images/cover_corte_espinhos_1792416890919.jpg',
+    capaUrl: '/images/cover_corte_espinhos_1792416890919.jpg',
     descricao: 'Feyre, uma jovem caçadora mortal, é levada para as terras mágicas e letais de Prythian após abater um lobo feérico na floresta.',
     sinopseDetalhada:
       'Num inverno implacável, a caçadora de dezenove anos Feyre abate um lobo imenso na floresta para alimentar sua família. Em retaliação, uma criatura feérica surge exigindo reparação e a conduz para a Corte Primaveril, além da muralha mágica. Lá, Feyre descobre que seu captor é Tamlin, um Grão-Feérico imortal, e que uma praga sombria ameaça destruir tanto o mundo feérico quanto o humano.',
@@ -60,7 +60,7 @@ export const INITIAL_BOOKS: Book[] = [
     disponiveis: 3,
     status: 'disponivel',
     indicacaoFaixaEtaria: '14+ anos',
-    capaUrl: '/src/assets/images/cover_manga_demonslayer_1792416786510.jpg',
+    capaUrl: '/images/cover_manga_demonslayer_1792416786510.jpg',
     descricao: 'Tanjiro Kamado parte numa jornada implacável como caçador de onis para encontrar a cura que devolva a humanidade à sua irmã Nezuko.',
     sinopseDetalhada:
       'No Japão da Era Taisho, o bondoso jovem vendedor de carvão Tanjiro Kamado encontra sua família dizimada por um demônio. A única sobrevivente é sua irmã mais nova, Nezuko, transformada em oni, mas que surpreendentemente ainda demonstra emoções humanas e protege o irmão. Determinado a curá-la, Tanjiro inicia o árduo treinamento das Respirações da Água.',
@@ -80,7 +80,7 @@ export const INITIAL_BOOKS: Book[] = [
     disponiveis: 4,
     status: 'disponivel',
     indicacaoFaixaEtaria: '12+ anos',
-    capaUrl: '/src/assets/images/cover_percy_jackson_1792416533608.jpg',
+    capaUrl: '/images/cover_percy_jackson_1792416533608.jpg',
     descricao: 'Os deuses do Olimpo continuam vivos em pleno século XXI — e Percy acaba de descobrir que é um semideus acusado de roubar o raio-mestre de Zeus.',
     sinopseDetalhada:
       'Percy Jackson sempre teve problemas para se concentrar nas aulas, até que sua professora de álgebra se transforma num monstro mitológico. Levado às pressas ao Acampamento Meio-Sangue, ele descobre ser filho de Poseidon. Ao lado de Annabeth e do sátiro Grover, Percy tem dez dias para atravessar os Estados Unidos, recuperar o raio-mestre de Zeus e impedir uma guerra no Olimpo.',
@@ -100,7 +100,7 @@ export const INITIAL_BOOKS: Book[] = [
     disponiveis: 0,
     status: 'emprestado',
     indicacaoFaixaEtaria: '14+ anos',
-    capaUrl: '/src/assets/images/cover_mentirosos_1792416890217.jpg',
+    capaUrl: '/images/cover_mentirosos_1792416890217.jpg',
     descricao: 'Uma ilha particular, uma família brilhante e privilegiada, quatro amigos inseparáveis e um segredo de verão devastador que Cadence não consegue lembrar.',
     sinopseDetalhada:
       'Todo verão, a tradicional família Sinclair se reúne na ilha particular de Beechwood. Cadence, Johnny, Mirren e Gat são conhecidos na família como "os Mentirosos". No verão de seus quinze anos, Cadence sofre um misterioso acidente no mar e passa dois anos tentando juntar os estilhaços de sua memória bloqueada — até retornar à ilha e encarar uma reviravolta inesquecível.',
@@ -120,7 +120,7 @@ export const INITIAL_BOOKS: Book[] = [
     disponiveis: 3,
     status: 'disponivel',
     indicacaoFaixaEtaria: '16+ anos',
-    capaUrl: '/src/assets/images/cover_fabricante_lagrimas_1792416785707.jpg',
+    capaUrl: '/images/cover_fabricante_lagrimas_1792416785707.jpg',
     descricao: 'Criados num orfanato cercado de lendas sombrias, Nica e Rigel são adotados pela mesma família e precisam lidar com traumas e sentimentos intensos.',
     sinopseDetalhada:
       'No rígido orfanato onde cresceu, Nica ouvia à noite a lenda do Fabricante de Lágrimas, um artesão de olhos claros que forjava todas as angústias humanas. Aos dezessete anos, quando finalmente ganha um lar adotivo, ela descobre que os novos pais também acolheram Rigel — o garoto brilhante, enigmático e inquieto com quem sempre teve uma relação magnética e conflituosa.',
@@ -140,7 +140,7 @@ export const INITIAL_BOOKS: Book[] = [
     disponiveis: 4,
     status: 'disponivel',
     indicacaoFaixaEtaria: '12+ anos',
-    capaUrl: '/src/assets/images/cover_manga_spyfamily_1792416924031.jpg',
+    capaUrl: '/images/cover_manga_spyfamily_1792416924031.jpg',
     descricao: 'Um espião de elite, uma assassina secreta e uma garotinha telepata formam uma família de fachada sem saberem a verdadeira identidade um do outro.',
     sinopseDetalhada:
       'Para cumprir sua missão mais delicada e manter a paz entre duas nações rivais, o agente secreto "Twilight" precisa criar uma família perfeita em sete dias. O que Loid Forger não imagina é que a esposa gentil que escolheu, Yor, atua como assassina profissional, e a filha adotiva, Anya, consegue ler mentes — sendo a única que conhece todos os segredos da casa.',
@@ -160,7 +160,7 @@ export const INITIAL_BOOKS: Book[] = [
     disponiveis: 5,
     status: 'disponivel',
     indicacaoFaixaEtaria: '10+ anos',
-    capaUrl: '/src/assets/images/cover_harry_potter_1792416088446.jpg',
+    capaUrl: '/images/cover_harry_potter_1792416088446.jpg',
     descricao: 'Ao completar onze anos, Harry recebe uma carta misteriosa e descobre seu lugar na Escola de Magia e Bruxaria de Hogwarts.',
     sinopseDetalhada:
       'Órfão e criado pelos tios que escondem sua origem, Harry Potter tem sua vida transformada na noite de seu décimo primeiro aniversário quando Rúbeo Hagrid revela que ele é um bruxo. Na Plataforma 9¾, Harry embarca rumo a Hogwarts, faz amizade com Rony e Hermione e investiga o mistério guardado a sete chaves sob o alçapão do terceiro andar.',
@@ -180,7 +180,7 @@ export const INITIAL_BOOKS: Book[] = [
     disponiveis: 3,
     status: 'disponivel',
     indicacaoFaixaEtaria: '14+ anos',
-    capaUrl: '/src/assets/images/cover_culpa_estrelas_1792416088311.jpg',
+    capaUrl: '/images/cover_culpa_estrelas_1792416088311.jpg',
     descricao: 'Hazel e Augustus se conhecem num grupo de apoio e embarcam numa jornada bem-humorada, filosófica e inesquecível até Amsterdã.',
     sinopseDetalhada:
       'Hazel Grace Lancaster tem dezesseis anos, humor ácido e um livro favorito cujo final abrupto não sai de sua cabeça. Quando conhece Augustus Waters num grupo de apoio, os dois compartilham leituras, ironias e o desejo de conversar pessoalmente com um autor recluso em Amsterdã, descobrindo que alguns infinitos são maiores que outros.',
@@ -200,7 +200,7 @@ export const INITIAL_BOOKS: Book[] = [
     disponiveis: 3,
     status: 'disponivel',
     indicacaoFaixaEtaria: '12+ anos',
-    capaUrl: '/src/assets/images/cover_para_todos_garotos_1792416534823.jpg',
+    capaUrl: '/images/cover_para_todos_garotos_1792416534823.jpg',
     descricao: 'As cartas secretas que Lara Jean escreveu para todas as suas paixões platônicas são misteriosamente enviadas pelo correio de uma só vez.',
     sinopseDetalhada:
       'Lara Jean guarda suas cartas de amor mais sinceras numa caixa azul-petróleo que ganhou da mãe. Elas nunca deveriam ser lidas por ninguém — até que, num dia caótico, todas são postadas e entregues aos destinatários, incluindo Josh, o ex-namorado de sua irmã, e Peter Kavinsky, com quem ela decide firmar um namoro de mentira cheio de regras.',
@@ -220,7 +220,7 @@ export const INITIAL_BOOKS: Book[] = [
     disponiveis: 2,
     status: 'disponivel',
     indicacaoFaixaEtaria: '12+ anos',
-    capaUrl: '/src/assets/images/cover_manga_onepiece_1792416785985.jpg',
+    capaUrl: '/images/cover_manga_onepiece_1792416785985.jpg',
     descricao: 'Monkey D. Luffy zarpa num pequeno barco com seu chapéu de palha em busca do lendário tesouro One Piece e da tripulação mais leal dos mares.',
     sinopseDetalhada:
       'Após comer acidentalmente a Gomu Gomu no Mi, fruta do diabo que transformou seu corpo em borracha, o jovem Luffy promete ao pirata Shanks que reunirá companheiros extraordinários na Grand Line e conquistará o título de Rei dos Piratas.',
@@ -240,7 +240,7 @@ export const INITIAL_BOOKS: Book[] = [
     disponiveis: 4,
     status: 'disponivel',
     indicacaoFaixaEtaria: '12+ anos',
-    capaUrl: '/src/assets/images/cover_amor_gelato_1792416872656.jpg',
+    capaUrl: '/images/cover_amor_gelato_1792416872656.jpg',
     descricao: 'Um verão na Toscana, um antigo diário secreto da mãe e a descoberta de Florença ao lado do carismático Lorenzo.',
     sinopseDetalhada:
       'Lina viaja para a Itália para atender a um pedido de sua mãe, mas tudo o que quer é voltar para casa — até receber um diário antigo que a mãe escreveu quando morou em Florença na juventude. Seguindo as pistas pelas ruas históricas, padarias secretas e gelaterias ao lado de Ren, Lina desvenda segredos de família que mudam tudo.',
@@ -260,7 +260,7 @@ export const INITIAL_BOOKS: Book[] = [
     disponiveis: 2,
     status: 'disponivel',
     indicacaoFaixaEtaria: '16+ anos',
-    capaUrl: '/src/assets/images/cover_atraves_janela_1792416872378.jpg',
+    capaUrl: '/images/cover_atraves_janela_1792416872378.jpg',
     descricao: 'Tudo começa com a senha do Wi-Fi: Raquel observa o vizinho Ares Hidalgo há anos, mas decide que nunca mais passará despercebida.',
     sinopseDetalhada:
       'Raquel sempre observou Ares Hidalgo da janela de seu quarto, mas nunca trocou uma palavra sequer com o enigmático herdeiro da família vizinha — até descobrir que ele está usando sua internet sem permissão. O confronto entre os dois desencadeia um jogo eletrizante de provocações e segredos.',
@@ -280,7 +280,7 @@ export const INITIAL_BOOKS: Book[] = [
     disponiveis: 3,
     status: 'disponivel',
     indicacaoFaixaEtaria: '16+ anos',
-    capaUrl: '/src/assets/images/cover_manga_shingeki_1792416785622.jpg',
+    capaUrl: '/images/cover_manga_shingeki_1792416785622.jpg',
     descricao: 'Cercada por muralhas gigantescas há um século, a humanidade vê sua paz ruir no instante em que o Titã Colossal abre uma brecha na Muralha Maria.',
     sinopseDetalhada:
       'Eren Yeager, Mikasa Ackerman e Armin Arlert cresceram sonhando com os oceanos e planícies além das muralhas que protegem os últimos humanos. Quando um Titã de sessenta metros surge do nada e destrói seu distrito natal, os três ingressam na Tropa de Exploração para desvendar a verdadeira origem dos Titãs.',
@@ -300,7 +300,7 @@ export const INITIAL_BOOKS: Book[] = [
     disponiveis: 5,
     status: 'disponivel',
     indicacaoFaixaEtaria: '14+ anos',
-    capaUrl: '/src/assets/images/cover_capitaes_da_areia_1792416535029.jpg',
+    capaUrl: '/images/cover_capitaes_da_areia_1792416535029.jpg',
     descricao: 'Liderados por Pedro Bala num trapiche abandonado de Salvador, meninos de rua vivem aventuras, lealdades e o sonho de liberdade.',
     sinopseDetalhada:
       'Pedro Bala, Professor, Sem-Pernas, Gato e Dora formam o lendário grupo conhecido nas manchetes da Bahia como Capitães da Areia. Entre o cais do porto, o carrossel iluminado e as noites estreladas da praia, eles enfrentam a dureza da cidade enquanto descobrem amizade, arte e coragem.',
@@ -320,7 +320,7 @@ export const INITIAL_BOOKS: Book[] = [
     disponiveis: 5,
     status: 'disponivel',
     indicacaoFaixaEtaria: '14+ anos',
-    capaUrl: '/src/assets/images/cover_dom_casmurro_1792416086530.jpg',
+    capaUrl: '/images/cover_dom_casmurro_1792416086530.jpg',
     descricao: 'Bentinho narra sua paixão de juventude por Capitu, a menina de olhos de cigana oblíqua e dissimulada, no maior enigma da literatura nacional.',
     sinopseDetalhada:
       'Já maduro e solitário, Bento Santiago reconstrói a casa da infância no Engenho Novo e decide escrever suas memórias: a promessa da mãe de fazê-lo padre, os planos engenhosos com Capitu, a amizade com Escobar e o ciúme corrosivo que transforma cada lembrança num tribunal.',
@@ -340,7 +340,7 @@ export const INITIAL_BOOKS: Book[] = [
     disponiveis: 4,
     status: 'disponivel',
     indicacaoFaixaEtaria: 'Livre',
-    capaUrl: '/src/assets/images/cover_pequeno_principe_1792416085800.jpg',
+    capaUrl: '/images/cover_pequeno_principe_1792416085800.jpg',
     descricao: 'Perdido no deserto do Saara, um aviador conhece um pequeno viajante vindo do asteroide B-612 que enxerga o mundo com os olhos do coração.',
     sinopseDetalhada:
       'Enquanto tenta consertar a pane de seu avião no deserto, um piloto ouve uma voz pedindo que desenhe um carneiro. Aos poucos, conhece a história da rosa orgulhosa, da raposa sábia e dos planetas habitados por adultos curiosos que esqueceram o que realmente importa.',
@@ -361,7 +361,7 @@ export const INITIAL_BOOKS: Book[] = [
     status: 'em_transito',
     dataPrevistaChegada: '2026-11-05',
     indicacaoFaixaEtaria: '12+ anos',
-    capaUrl: '/src/assets/images/book_cover_sci_1792412554469.jpg',
+    capaUrl: '/images/book_cover_sci_1792412554469.jpg',
     descricao: 'Do Big Bang aos buracos negros e viagens no tempo: os maiores mistérios do cosmos explicados de forma acessível e fascinante.',
     sinopseDetalhada:
       'De onde veio o universo? O tempo sempre corre na mesma direção? O que existe no interior de um buraco negro? Com linguagem direta e sem fórmulas intimidadoras, Stephen Hawking conduz o leitor pelas fronteiras da astrofísica moderna.',
@@ -491,7 +491,7 @@ export const INITIAL_RESERVATIONS: Reservation[] = [
     livroId: 'b-3',
     livroTitulo: 'Demon Slayer: Kimetsu no Yaiba — Vol. 1',
     livroIsbn: '978-6559603152',
-    livroCapaUrl: '/src/assets/images/cover_manga_demonslayer_1792416786510.jpg',
+    livroCapaUrl: '/images/cover_manga_demonslayer_1792416786510.jpg',
     alunoId: 's-1',
     alunoNome: 'Beatriz Oliveira',
     alunoMatricula: '20260182',
@@ -507,7 +507,7 @@ export const INITIAL_RESERVATIONS: Reservation[] = [
     livroId: 'b-5',
     livroTitulo: 'Mentirosos',
     livroIsbn: '978-8580576887',
-    livroCapaUrl: '/src/assets/images/cover_mentirosos_1792416890217.jpg',
+    livroCapaUrl: '/images/cover_mentirosos_1792416890217.jpg',
     alunoId: 's-4',
     alunoNome: 'Rafael Almeida Rocha',
     alunoMatricula: '20260408',
