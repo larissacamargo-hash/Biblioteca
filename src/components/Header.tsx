@@ -1,6 +1,6 @@
 import React from 'react';
 import { useLibrary } from '../context/LibraryContext';
-import { LogOut } from 'lucide-react';
+import { LogOut, LogIn } from 'lucide-react';
 
 interface HeaderProps {
   currentTab?: string;
@@ -8,11 +8,13 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ currentTab, onSelectTab }) => {
-  const { 
-    mode, 
+  const {
+    mode,
     totalReservasAtivas,
     totalAtrasados,
-    logout 
+    isCloudConnected,
+    openLoginScreen,
+    logout,
   } = useLibrary();
 
   return (
@@ -100,15 +102,27 @@ export const Header: React.FC<HeaderProps> = ({ currentTab, onSelectTab }) => {
 
           {/* Zone 3: 1 primary action */}
           <div className="flex items-center shrink-0">
-            <button
-              type="button"
-              onClick={logout}
-              className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#181D2A] text-slate-200 hover:bg-[#22293A] hover:text-white border border-white/10 transition-colors duration-150 flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#FF5C35]"
-              title="Sair para a página de acesso"
-            >
-              <LogOut className="w-3.5 h-3.5" />
-              <span>Sair</span>
-            </button>
+            {isCloudConnected ? (
+              <button
+                type="button"
+                onClick={logout}
+                className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#181D2A] text-slate-200 hover:bg-[#22293A] hover:text-white border border-white/10 transition-colors duration-150 flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#FF5C35]"
+                title="Sair da conta Google"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Sair</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={openLoginScreen}
+                className="px-4 py-2 text-xs font-semibold rounded-lg bg-[#181D2A] text-slate-200 hover:bg-[#22293A] hover:text-white border border-white/10 transition-colors duration-150 flex items-center gap-2 whitespace-nowrap shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#FF5C35]"
+                title="Conectar conta Google para sincronizar na nuvem"
+              >
+                <LogIn className="w-3.5 h-3.5 text-[#FF6B47]" />
+                <span>Entrar</span>
+              </button>
+            )}
           </div>
         </div>
       </div>

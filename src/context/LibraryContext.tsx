@@ -93,14 +93,18 @@ interface LibraryContextType {
   currentStudent: Student | null;
   setCurrentStudent: (student: Student | null) => void;
   isAdminUser: boolean;
+  isCloudConnected: boolean;
+  isDemoMode: boolean;
   authReady: boolean;
   isLoadingDb: boolean;
   isAuthenticating: boolean;
 
-  // Auth actions
+  // Auth & Free Access actions
   signInWithGoogle: (
     preferredPortal: 'student' | 'librarian'
   ) => Promise<{ success: boolean; message: string }>;
+  enterDemoMode: (preferredPortal?: 'student' | 'librarian') => void;
+  openLoginScreen: () => void;
   logout: () => Promise<void>;
 
   // Data
@@ -145,6 +149,14 @@ interface LibraryContextType {
 const LibraryContext = createContext<LibraryContextType | undefined>(undefined);
 
 const PORTAL_MODE_KEY = 'bibliotech_portal_mode_v1';
+const DEMO_STORAGE_KEYS = {
+  ACTIVE: 'bibliotech_demo_active_v1',
+  BOOKS: 'bibliotech_demo_books_v1',
+  STUDENTS: 'bibliotech_demo_students_v1',
+  LOANS: 'bibliotech_demo_loans_v1',
+  RESERVATIONS: 'bibliotech_demo_reservations_v1',
+  REQUESTS: 'bibliotech_demo_requests_v1',
+};
 
 function normalizeAssetUrl(url?: string): string | undefined {
   if (!url) return undefined;
@@ -154,6 +166,18 @@ function normalizeAssetUrl(url?: string): string | undefined {
   return url;
 }
 
+function loadDemoJson<T>(key: string, fallback: T): T {
+  try {
+    const raw = localStorage.getItem(key);
+    if (raw) {
+      return JSON.parse(raw) as T;
+    }
+  } catch {
+    // Ignore storage read error and return fallback
+  }
+  return fallback;
+}
+
 function buildBookFirestoreDoc(book: Book, createdByUid: string) {
   const total = clampInt(book.totalExemplares, 0, 500);
   const disp = clampInt(book.disponiveis, 0, total);
@@ -161,7 +185,7 @@ function buildBookFirestoreDoc(book: Book, createdByUid: string) {
   return stripUndefined({
     id: sanitizeId(book.id, 'b'),
     isbn: sanitizeString(book.isbn, 40, '978-0000000000'),
-    titulo: sanitizeString(book.titulo, 200, ' Obra Sem Título'),
+    titulo: sanitizeString(book.titulo, 200, 'Obra Sem Título'),
     autor: sanitizeString(book.autor, 160, 'Autor Desconhecido'),
     categoria: book.categoria,
     ano: clampInt(book.ano, -1000, 2100),
@@ -196,19 +220,50 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [fatalError, setFatalError] = useState<Error | null>(null);
 
+  // Open free test access by default when not logged in with Google
+  const [isDemoMode, setIsDemoMode] = useState<boolean>(() => {
+    const saved = sessionStorage.getItem(DEMO_STORAGE_KEYS.ACTIVE);
+    return saved !== 'false';
+  });
+
   const [mode, setModeState] = useState<'librarian' | 'student'>(() => {
     const saved = sessionStorage.getItem(PORTAL_MODE_KEY);
     return saved === 'student' || saved === 'librarian' ? saved : 'librarian';
   });
 
-  const [books, setBooks] = useState<Book[]>([]);
+  // Cloud Firestore states (used when firebaseUser != null)
+  const [fsBooks, setFsBooks] = useState<Book[]>([]);
   const [publicStudents, setPublicStudents] = useState<StudentPublicDoc[]>([]);
   const [privateContacts, setPrivateContacts] = useState<
     Record<string, { email: string; telefone: string }>
   >({});
   const [rawLoans, setRawLoans] = useState<LoanFirestoreDoc[]>([]);
-  const [reservations, setReservations] = useState<Reservation[]>([]);
-  const [requests, setRequests] = useState<InterlibraryRequest[]>([]);
+  const [fsReservations, setFsReservations] = useState<Reservation[]>([]);
+  const [fsRequests, setFsRequests] = useState<InterlibraryRequest[]>([]);
+
+  // Local Free Access / Demo states (used when firebaseUser == null && isDemoMode == true)
+  const [demoBooks, setDemoBooks] = useState<Book[]>(() =>
+    loadDemoJson<Book[]>(DEMO_STORAGE_KEYS.BOOKS, INITIAL_BOOKS).map((b) => ({
+      ...b,
+      capaUrl: normalizeAssetUrl(b.capaUrl),
+    }))
+  );
+  const [demoStudents, setDemoStudents] = useState<Student[]>(() =>
+    loadDemoJson<Student[]>(DEMO_STORAGE_KEYS.STUDENTS, INITIAL_STUDENTS)
+  );
+  const [demoLoans, setDemoLoans] = useState<Loan[]>(() =>
+    loadDemoJson<Loan[]>(DEMO_STORAGE_KEYS.LOANS, INITIAL_LOANS)
+  );
+  const [demoReservations, setDemoReservations] = useState<Reservation[]>(() =>
+    loadDemoJson<Reservation[]>(DEMO_STORAGE_KEYS.RESERVATIONS, INITIAL_RESERVATIONS).map((r) => ({
+      ...r,
+      livroCapaUrl: normalizeAssetUrl(r.livroCapaUrl),
+    }))
+  );
+  const [demoRequests, setDemoRequests] = useState<InterlibraryRequest[]>(() =>
+    loadDemoJson<InterlibraryRequest[]>(DEMO_STORAGE_KEYS.REQUESTS, INITIAL_INTERLIBRARY)
+  );
+
   const [selectedStudentId, setSelectedStudentId] = useState<string>('s-1');
 
   const hasSeededRef = useRef(false);
@@ -216,7 +271,27 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const fetchedPrivateIdsRef = useRef<Set<string>>(new Set());
   const rejectNonAdminSessionRef = useRef(false);
 
-  // Surface fatal Firestore errors to ErrorBoundary
+  // Persist demo states to localStorage
+  useEffect(() => {
+    localStorage.setItem(DEMO_STORAGE_KEYS.BOOKS, JSON.stringify(demoBooks));
+  }, [demoBooks]);
+
+  useEffect(() => {
+    localStorage.setItem(DEMO_STORAGE_KEYS.STUDENTS, JSON.stringify(demoStudents));
+  }, [demoStudents]);
+
+  useEffect(() => {
+    localStorage.setItem(DEMO_STORAGE_KEYS.LOANS, JSON.stringify(demoLoans));
+  }, [demoLoans]);
+
+  useEffect(() => {
+    localStorage.setItem(DEMO_STORAGE_KEYS.RESERVATIONS, JSON.stringify(demoReservations));
+  }, [demoReservations]);
+
+  useEffect(() => {
+    localStorage.setItem(DEMO_STORAGE_KEYS.REQUESTS, JSON.stringify(demoRequests));
+  }, [demoRequests]);
+
   if (fatalError) {
     throw fatalError;
   }
@@ -232,13 +307,15 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     []
   );
 
-  const isAdminUser = Boolean(
+  const isCloudConnected = Boolean(firebaseUser);
+  const isFirebaseAdmin = Boolean(
     firebaseUser?.emailVerified &&
       firebaseUser?.email &&
       firebaseUser.email.toLowerCase() === BOOTSTRAPPED_ADMIN_EMAIL.toLowerCase()
   );
+  // In Free Test Mode without Google Login, allow testing both Librarian and Reader views
+  const isAdminUser = firebaseUser ? isFirebaseAdmin : isDemoMode;
 
-  // Helper to seed sample catalog & circulation records into Cloud Firestore
   const seedInitialData = useCallback(
     async (adminUid: string) => {
       const batch = writeBatch(db);
@@ -321,7 +398,9 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
             livroId: sanitizeId(res.livroId, 'b'),
             livroTitulo: sanitizeString(res.livroTitulo, 200, 'Livro'),
             livroIsbn: res.livroIsbn ? sanitizeString(res.livroIsbn, 40) : undefined,
-            livroCapaUrl: res.livroCapaUrl ? sanitizeString(res.livroCapaUrl, 500) : undefined,
+            livroCapaUrl: res.livroCapaUrl
+              ? sanitizeString(normalizeAssetUrl(res.livroCapaUrl), 500)
+              : undefined,
             alunoId: sId,
             ownerUid,
             alunoNome: sanitizeString(res.alunoNome, 160, 'Leitor'),
@@ -390,16 +469,17 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setAuthReady(true);
 
       if (!user) {
-        setBooks([]);
+        setFsBooks([]);
         setPublicStudents([]);
         setPrivateContacts({});
         setRawLoans([]);
-        setReservations([]);
-        setRequests([]);
+        setFsReservations([]);
+        setFsRequests([]);
         fetchedPrivateIdsRef.current.clear();
         hasOnboardedUidRef.current = null;
         setIsLoadingDb(false);
       } else {
+        setIsDemoMode(false);
         const userIsAdmin = Boolean(
           user.emailVerified &&
             user.email &&
@@ -438,7 +518,6 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       }
     };
 
-    // 1. Books listener (published catalog)
     const booksQuery = query(collection(db, 'books'), where('catalogPublished', '==', true));
     const unsubBooks = onSnapshot(
       booksQuery,
@@ -474,14 +553,13 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
           };
         });
         list.sort((a, b) => a.id.localeCompare(b.id, undefined, { numeric: true }));
-        setBooks(list);
+        setFsBooks(list);
         booksLoaded = true;
         markLoadedIfReady();
       },
       (err) => reportFirestoreFailure(err, OperationType.LIST, 'books')
     );
 
-    // 2. Students public listener (+ self-onboarding for new readers + private PII hydration)
     const studentsRef = admin
       ? collection(db, 'students')
       : query(collection(db, 'students'), where('ownerUid', '==', uid));
@@ -563,7 +641,6 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         studentsLoaded = true;
         markLoadedIfReady();
 
-        // Hydrate isolated PII documents (/students/{id}/private/info)
         for (const st of list) {
           if (!fetchedPrivateIdsRef.current.has(st.id)) {
             fetchedPrivateIdsRef.current.add(st.id);
@@ -593,7 +670,6 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       (err) => reportFirestoreFailure(err, OperationType.LIST, 'students')
     );
 
-    // 3. Loans listener
     const loansRef = admin
       ? collection(db, 'loans')
       : query(collection(db, 'loans'), where('ownerUid', '==', uid));
@@ -627,7 +703,6 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       (err) => reportFirestoreFailure(err, OperationType.LIST, 'loans')
     );
 
-    // 4. Reservations listener
     const reservationsRef = admin
       ? collection(db, 'reservations')
       : query(collection(db, 'reservations'), where('ownerUid', '==', uid));
@@ -655,12 +730,11 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
           };
         });
         list.sort((a, b) => b.dataReserva.localeCompare(a.dataReserva));
-        setReservations(list);
+        setFsReservations(list);
       },
       (err) => reportFirestoreFailure(err, OperationType.LIST, 'reservations')
     );
 
-    // 5. Interlibrary Requests listener (Librarian only)
     let unsubRequests: (() => void) | undefined;
     if (admin) {
       const reqQuery = query(
@@ -687,12 +761,12 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
             };
           });
           list.sort((a, b) => b.dataSolicitacao.localeCompare(a.dataSolicitacao));
-          setRequests(list);
+          setFsRequests(list);
         },
         (err) => reportFirestoreFailure(err, OperationType.LIST, 'requests')
       );
     } else {
-      setRequests([]);
+      setFsRequests([]);
     }
 
     return () => {
@@ -704,7 +778,6 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
   }, [authReady, firebaseUser, seedInitialData, reportFirestoreFailure]);
 
-  // Hydrate full Student[] and Loan[] objects in memory
   const studentOwnerMap = useMemo(() => {
     const map: Record<string, string> = {};
     for (const s of publicStudents) {
@@ -713,7 +786,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return map;
   }, [publicStudents]);
 
-  const students: Student[] = useMemo(() => {
+  const fsStudents: Student[] = useMemo(() => {
     return publicStudents.map((s) => ({
       id: s.id,
       nome: s.nome,
@@ -729,7 +802,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }));
   }, [publicStudents, privateContacts]);
 
-  const loans: Loan[] = useMemo(() => {
+  const fsLoans: Loan[] = useMemo(() => {
     return rawLoans.map((l) => ({
       id: l.id,
       livroId: l.livroId,
@@ -749,9 +822,15 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }));
   }, [rawLoans, privateContacts]);
 
+  // Unified active dataset (Cloud Firestore when signed in, local Demo Mode when free access)
+  const books = firebaseUser ? fsBooks : demoBooks;
+  const students = firebaseUser ? fsStudents : demoStudents;
+  const loans = firebaseUser ? fsLoans : demoLoans;
+  const reservations = firebaseUser ? fsReservations : demoReservations;
+  const requests = firebaseUser ? fsRequests : demoRequests;
+
   const currentStudent: Student | null = useMemo(() => {
-    if (!firebaseUser) return null;
-    if (!isAdminUser) {
+    if (firebaseUser && !isFirebaseAdmin) {
       return (
         students.find((s) => s.id === firebaseUser.uid) ||
         students[0] || {
@@ -769,25 +848,38 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
       );
     }
+    if (!firebaseUser && !isDemoMode) return null;
     return students.find((s) => s.id === selectedStudentId) || students[0] || null;
-  }, [firebaseUser, isAdminUser, students, selectedStudentId]);
+  }, [firebaseUser, isFirebaseAdmin, isDemoMode, students, selectedStudentId]);
 
   const currentUser: AuthUser = useMemo(() => {
-    if (!firebaseUser) return null;
-    if (isAdminUser) {
+    if (firebaseUser) {
+      if (isFirebaseAdmin) {
+        return {
+          role: 'librarian',
+          name: firebaseUser.displayName || 'Gestão Bibliotech',
+          cargo: 'Curadoria & Administração do Acervo',
+          email: firebaseUser.email || BOOTSTRAPPED_ADMIN_EMAIL,
+        };
+      }
+      if (!currentStudent) return null;
       return {
-        role: 'librarian',
-        name: firebaseUser.displayName || 'Gestão Bibliotech',
-        cargo: 'Curadoria & Administração do Acervo',
-        email: firebaseUser.email || BOOTSTRAPPED_ADMIN_EMAIL,
+        role: 'student',
+        student: currentStudent,
       };
     }
-    if (!currentStudent) return null;
-    return {
-      role: 'student',
-      student: currentStudent,
-    };
-  }, [firebaseUser, isAdminUser, currentStudent]);
+
+    if (isDemoMode) {
+      return {
+        role: 'librarian',
+        name: 'Acesso Livre',
+        cargo: 'Modo Teste Aberto',
+        email: 'teste@bibliotech.local',
+      };
+    }
+
+    return null;
+  }, [firebaseUser, isFirebaseAdmin, isDemoMode, currentStudent]);
 
   const setMode = (newMode: 'librarian' | 'student') => {
     if (newMode === 'librarian' && !isAdminUser) return;
@@ -799,6 +891,18 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     if (st) {
       setSelectedStudentId(st.id);
     }
+  };
+
+  const enterDemoMode = (preferredPortal: 'student' | 'librarian' = 'librarian') => {
+    setIsDemoMode(true);
+    sessionStorage.setItem(DEMO_STORAGE_KEYS.ACTIVE, 'true');
+    setModeState(preferredPortal);
+    sessionStorage.setItem(PORTAL_MODE_KEY, preferredPortal);
+  };
+
+  const openLoginScreen = () => {
+    setIsDemoMode(false);
+    sessionStorage.setItem(DEMO_STORAGE_KEYS.ACTIVE, 'false');
   };
 
   const signInWithGoogle = async (
@@ -822,11 +926,13 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         return {
           success: false,
           message:
-            'Esta conta Google não possui privilégio de Gestão da Biblioteca. Entre pela aba "Portal do Leitor" ou utilize a conta administradora.',
+            'Esta conta Google não possui privilégio de Gestão da Biblioteca. Entre pela aba "Portal do Leitor" ou use o Acesso Livre para testar.',
         };
       }
 
       rejectNonAdminSessionRef.current = false;
+      setIsDemoMode(false);
+      sessionStorage.setItem(DEMO_STORAGE_KEYS.ACTIVE, 'false');
       const nextMode = admin ? preferredPortal : 'student';
       setModeState(nextMode);
       sessionStorage.setItem(PORTAL_MODE_KEY, nextMode);
@@ -847,21 +953,21 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (code === 'auth/unauthorized-domain') {
         return {
           success: false,
-          message: `Domínio não autorizado no Firebase (auth/unauthorized-domain). Adicione "${host}" em Authentication > Settings > Authorized domains no Firebase Console.`,
+          message: `Domínio não autorizado no Firebase (auth/unauthorized-domain). Adicione "${host}" no Firebase Console ou clique em "Testar Acesso Livre" abaixo.`,
         };
       }
       if (code === 'auth/operation-not-allowed') {
         return {
           success: false,
           message:
-            'Provedor Google desativado neste projeto Firebase (auth/operation-not-allowed). Ative o login com Google no Firebase Console.',
+            'Provedor Google desativado neste projeto Firebase (auth/operation-not-allowed). Você pode testar tudo no Acesso Livre abaixo.',
         };
       }
       if (code === 'auth/network-request-failed') {
         return {
           success: false,
           message:
-            'Falha de conexão ao tentar autenticar com Google (auth/network-request-failed). Verifique sua internet ou bloqueadores.',
+            'Falha de conexão ao autenticar com Google (auth/network-request-failed). Verifique sua internet ou use o Acesso Livre.',
         };
       }
       if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
@@ -873,12 +979,12 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (code === 'auth/popup-blocked') {
         return {
           success: false,
-          message: 'O navegador bloqueou o pop-up do Google. Permita pop-ups para continuar.',
+          message: 'O navegador bloqueou o pop-up do Google. Permita pop-ups ou use o Acesso Livre.',
         };
       }
       return {
         success: false,
-        message: `Não foi possível concluir o login com Google${code ? ` (${code})` : ''}. Tente novamente.`,
+        message: `Não foi possível concluir o login com Google${code ? ` (${code})` : ''}. Tente o Acesso Livre abaixo.`,
       };
     } finally {
       setIsAuthenticating(false);
@@ -886,7 +992,10 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const logout = async () => {
-    await signOut(auth);
+    if (firebaseUser) {
+      await signOut(auth);
+    }
+    openLoginScreen();
   };
 
   // Calculations
@@ -902,7 +1011,7 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     .reduce((acc, r) => acc + r.quantidade, 0);
   const totalReservasAtivas = reservations.filter((r) => r.status === 'ativa').length;
 
-  // Actions synchronized with Cloud Firestore
+  // Actions
   const createLoan = (bookId: string, studentId: string, days = 14) => {
     const book = books.find((b) => b.id === bookId);
     const student = students.find((s) => s.id === studentId);
@@ -934,10 +1043,55 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const formatDate = (d: Date) => d.toISOString().split('T')[0];
 
     const loanId = sanitizeId(`l-${Date.now()}-${Math.floor(Math.random() * 1000)}`, 'l');
-    const ownerUid = studentOwnerMap[student.id] || sanitizeId(`seed_${student.id}`, 'seed');
     const newDisp = clampInt(book.disponiveis - 1, 0, book.totalExemplares);
     const nextBookStatus = newDisp === 0 ? 'emprestado' : book.status;
 
+    if (!firebaseUser) {
+      const newLoan: Loan = {
+        id: loanId,
+        livroId: book.id,
+        livroTitulo: book.titulo,
+        livroIsbn: book.isbn,
+        alunoId: student.id,
+        alunoNome: student.nome,
+        alunoMatricula: student.matricula,
+        alunoEmail: student.email,
+        dataEmprestimo: formatDate(today),
+        dataPrevistaDevolucao: formatDate(dueDate),
+        status: 'ativo',
+      };
+      setDemoLoans((prev) => [newLoan, ...prev]);
+      setDemoBooks((prev) =>
+        prev.map((b) =>
+          b.id === book.id ? { ...b, disponiveis: newDisp, status: nextBookStatus } : b
+        )
+      );
+      setDemoStudents((prev) =>
+        prev.map((s) =>
+          s.id === student.id
+            ? {
+                ...s,
+                livrosAtivos: s.livrosAtivos + 1,
+                totalHistoricoEmprestimos: s.totalHistoricoEmprestimos + 1,
+              }
+            : s
+        )
+      );
+      setDemoReservations((prev) =>
+        prev.map((r) =>
+          r.livroId === book.id && r.alunoId === student.id && r.status === 'ativa'
+            ? { ...r, status: 'retirada' }
+            : r
+        )
+      );
+
+      return {
+        success: true,
+        message: `Empréstimo registrado com sucesso! Devolução até ${formatDate(dueDate)}.`,
+      };
+    }
+
+    const ownerUid = studentOwnerMap[student.id] || sanitizeId(`seed_${student.id}`, 'seed');
     const batch = writeBatch(db);
 
     batch.set(doc(db, 'loans', loanId), {
@@ -996,6 +1150,43 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const book = books.find((b) => b.id === loan.livroId);
     const student = students.find((s) => s.id === loan.alunoId);
 
+    if (!firebaseUser) {
+      setDemoLoans((prev) =>
+        prev.map((l) => (l.id === loanId ? { ...l, status: 'devolvido', dataDevolucao: todayStr } : l))
+      );
+      if (book) {
+        const newDisp = clampInt(book.disponiveis + 1, 0, book.totalExemplares);
+        setDemoBooks((prev) =>
+          prev.map((b) =>
+            b.id === book.id
+              ? { ...b, disponiveis: newDisp, status: newDisp > 0 ? 'disponivel' : b.status }
+              : b
+          )
+        );
+      }
+      if (student) {
+        const remainingActive = clampInt(student.livrosAtivos - 1, 0, 50);
+        const otherOverdues = loans.filter(
+          (other) => other.id !== loanId && other.alunoId === student.id && other.status === 'atrasado'
+        );
+        setDemoStudents((prev) =>
+          prev.map((s) =>
+            s.id === student.id
+              ? {
+                  ...s,
+                  livrosAtivos: remainingActive,
+                  statusConta: otherOverdues.length > 0 ? 'bloqueado_atraso' : 'regular',
+                }
+              : s
+          )
+        );
+      }
+      return {
+        success: true,
+        message: `Devolução de "${loan.livroTitulo}" confirmada na biblioteca!`,
+      };
+    }
+
     const batch = writeBatch(db);
 
     batch.update(doc(db, 'loans', loan.id), {
@@ -1036,9 +1227,6 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const reserveBook = (bookId: string, studentId: string) => {
-    if (!firebaseUser) {
-      return { success: false, message: 'Faça login para reservar um exemplar.' };
-    }
     const book = books.find((b) => b.id === bookId);
     const student = students.find((s) => s.id === studentId);
 
@@ -1065,16 +1253,48 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     const isImmediate = book.disponiveis > 0;
     const resId = sanitizeId(`r-${Date.now()}-${Math.floor(Math.random() * 1000)}`, 'r');
-    const ownerUid = isAdminUser
-      ? studentOwnerMap[student.id] || sanitizeId(`seed_${student.id}`, 'seed')
-      : firebaseUser.uid;
-
     const nextDisp = isImmediate ? Math.max(0, book.disponiveis - 1) : 0;
     const nextStatus = isImmediate
       ? nextDisp === 0
         ? 'reservado'
         : book.status
       : 'reservado';
+
+    if (!firebaseUser) {
+      const newRes: Reservation = {
+        id: resId,
+        livroId: book.id,
+        livroTitulo: book.titulo,
+        livroIsbn: book.isbn,
+        livroCapaUrl: normalizeAssetUrl(book.capaUrl),
+        alunoId: student.id,
+        alunoNome: student.nome,
+        alunoMatricula: student.matricula,
+        alunoCurso: student.curso,
+        dataReserva: formatDate(today),
+        validadeReserva: formatDate(expiry),
+        status: 'ativa',
+        tipo: isImmediate ? 'retirada_imediata' : 'fila_espera',
+        avisadoPronto: isImmediate,
+      };
+      setDemoReservations((prev) => [newRes, ...prev]);
+      setDemoBooks((prev) =>
+        prev.map((b) =>
+          b.id === book.id ? { ...b, disponiveis: nextDisp, status: nextStatus } : b
+        )
+      );
+
+      return {
+        success: true,
+        message: isImmediate
+          ? `Reserva confirmada! 1 exemplar foi separado e aguarda sua retirada no balcão da biblioteca até ${formatDate(expiry)}.`
+          : `Reserva confirmada na fila de espera! Assim que o exemplar for devolvido, ele será reservado com prioridade para você.`,
+      };
+    }
+
+    const ownerUid = isAdminUser
+      ? studentOwnerMap[student.id] || sanitizeId(`seed_${student.id}`, 'seed')
+      : firebaseUser.uid;
 
     const batch = writeBatch(db);
 
@@ -1085,7 +1305,9 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         livroId: book.id,
         livroTitulo: sanitizeString(book.titulo, 200, 'Livro'),
         livroIsbn: book.isbn ? sanitizeString(book.isbn, 40) : undefined,
-        livroCapaUrl: book.capaUrl ? sanitizeString(book.capaUrl, 500) : undefined,
+        livroCapaUrl: book.capaUrl
+          ? sanitizeString(normalizeAssetUrl(book.capaUrl), 500)
+          : undefined,
         alunoId: student.id,
         ownerUid,
         alunoNome: sanitizeString(student.nome, 160, 'Leitor'),
@@ -1147,8 +1369,65 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const formatDate = (d: Date) => d.toISOString().split('T')[0];
 
     const loanId = sanitizeId(`l-${Date.now()}-${Math.floor(Math.random() * 1000)}`, 'l');
-    const ownerUid = studentOwnerMap[student.id] || sanitizeId(`seed_${student.id}`, 'seed');
 
+    if (!firebaseUser) {
+      const newLoan: Loan = {
+        id: loanId,
+        livroId: book.id,
+        livroTitulo: book.titulo,
+        livroIsbn: book.isbn,
+        alunoId: student.id,
+        alunoNome: student.nome,
+        alunoMatricula: student.matricula,
+        alunoEmail: student.email,
+        dataEmprestimo: formatDate(today),
+        dataPrevistaDevolucao: formatDate(dueDate),
+        status: 'ativo',
+        observacoes: `Retirada de reserva no balcão (Reserva cód. ${res.id})`,
+      };
+      setDemoLoans((prev) => [newLoan, ...prev]);
+      setDemoReservations((prev) =>
+        prev.map((r) => (r.id === reservationId ? { ...r, status: 'retirada' } : r))
+      );
+      setDemoStudents((prev) =>
+        prev.map((s) =>
+          s.id === student.id
+            ? {
+                ...s,
+                livrosAtivos: s.livrosAtivos + 1,
+                totalHistoricoEmprestimos: s.totalHistoricoEmprestimos + 1,
+              }
+            : s
+        )
+      );
+      if (res.tipo === 'fila_espera' && book.disponiveis > 0) {
+        const nextDisp = Math.max(0, book.disponiveis - 1);
+        setDemoBooks((prev) =>
+          prev.map((b) =>
+            b.id === book.id
+              ? { ...b, disponiveis: nextDisp, status: nextDisp === 0 ? 'emprestado' : b.status }
+              : b
+          )
+        );
+      } else if (book.disponiveis === 0 && book.status === 'reservado') {
+        const hasOtherActive = reservations.some(
+          (other) =>
+            other.id !== reservationId && other.livroId === book.id && other.status === 'ativa'
+        );
+        if (!hasOtherActive) {
+          setDemoBooks((prev) =>
+            prev.map((b) => (b.id === book.id ? { ...b, status: 'emprestado' } : b))
+          );
+        }
+      }
+
+      return {
+        success: true,
+        message: `Empréstimo efetivado! Exemplar de "${book.titulo}" entregue a ${student.nome}. Devolução prevista para ${formatDate(dueDate)}.`,
+      };
+    }
+
+    const ownerUid = studentOwnerMap[student.id] || sanitizeId(`seed_${student.id}`, 'seed');
     const batch = writeBatch(db);
 
     batch.set(doc(db, 'loans', loanId), {
@@ -1224,6 +1503,41 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
 
     const book = books.find((b) => b.id === res.livroId);
+
+    if (!firebaseUser) {
+      setDemoReservations((prev) =>
+        prev.map((r) => (r.id === reservationId ? { ...r, status: 'cancelada' } : r))
+      );
+      if (book) {
+        let nextDisp = book.disponiveis;
+        let nextStatus = book.status;
+
+        if (res.tipo === 'retirada_imediata') {
+          nextDisp = Math.min(book.totalExemplares, book.disponiveis + 1);
+          nextStatus = nextDisp > 0 ? 'disponivel' : book.status;
+        } else if (book.status === 'reservado') {
+          const hasOtherActive = reservations.some(
+            (other) =>
+              other.id !== reservationId && other.livroId === res.livroId && other.status === 'ativa'
+          );
+          if (!hasOtherActive) {
+            nextStatus = book.disponiveis > 0 ? 'disponivel' : 'emprestado';
+          }
+        }
+
+        setDemoBooks((prev) =>
+          prev.map((b) =>
+            b.id === book.id ? { ...b, disponiveis: nextDisp, status: nextStatus } : b
+          )
+        );
+      }
+
+      return {
+        success: true,
+        message: `Reserva do livro "${res.livroTitulo}" cancelada com sucesso! O exemplar foi liberado.`,
+      };
+    }
+
     const batch = writeBatch(db);
 
     batch.update(doc(db, 'reservations', reservationId), {
@@ -1285,6 +1599,13 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const res = reservations.find((r) => r.id === reservationId);
     if (!res || res.status !== 'ativa' || res.avisadoPronto) return;
 
+    if (!firebaseUser) {
+      setDemoReservations((prev) =>
+        prev.map((r) => (r.id === reservationId ? { ...r, avisadoPronto: true } : r))
+      );
+      return;
+    }
+
     updateDoc(doc(db, 'reservations', reservationId), {
       avisadoPronto: true,
       updatedAt: serverTimestamp(),
@@ -1294,12 +1615,17 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const addBook = (bookData: Omit<Book, 'id'>) => {
-    if (!firebaseUser) return;
     const newId = sanitizeId(`b-${Date.now()}`, 'b');
     const newBook: Book = {
       ...bookData,
       id: newId,
+      capaUrl: normalizeAssetUrl(bookData.capaUrl),
     };
+
+    if (!firebaseUser) {
+      setDemoBooks((prev) => [newBook, ...prev]);
+      return;
+    }
 
     setDoc(doc(db, 'books', newId), buildBookFirestoreDoc(newBook, firebaseUser.uid)).catch((err) =>
       reportFirestoreFailure(err, OperationType.CREATE, `books/${newId}`)
@@ -1311,6 +1637,20 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
   ) => {
     const todayStr = new Date().toISOString().split('T')[0];
     const newId = sanitizeId(`s-${Date.now()}`, 's');
+
+    if (!firebaseUser) {
+      const newStudent: Student = {
+        ...studentData,
+        id: newId,
+        livrosAtivos: 0,
+        statusConta: 'regular',
+        dataCadastro: todayStr,
+        totalHistoricoEmprestimos: 0,
+      };
+      setDemoStudents((prev) => [newStudent, ...prev]);
+      return;
+    }
+
     const ownerUid = sanitizeId(`managed_${newId}`, 'managed');
     const safeEmail = sanitizeString(studentData.email, 160, 'leitor@bibliotech.org.br');
     const safePhone = sanitizeString(studentData.telefone, 40, '');
@@ -1326,7 +1666,11 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
       id: newId,
       ownerUid,
       nome: sanitizeString(studentData.nome, 160, 'Novo Leitor'),
-      matricula: sanitizeString(studentData.matricula, 40, `2026${Math.floor(1000 + Math.random() * 9000)}`),
+      matricula: sanitizeString(
+        studentData.matricula,
+        40,
+        `2026${Math.floor(1000 + Math.random() * 9000)}`
+      ),
       curso: sanitizeString(studentData.curso, 120, 'Comunidade Jovem'),
       livrosAtivos: 0,
       limiteEmprestimos: clampInt(studentData.limiteEmprestimos, 1, 20),
@@ -1354,9 +1698,19 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const createInterlibraryRequest = (
     req: Omit<InterlibraryRequest, 'id' | 'dataSolicitacao' | 'status'>
   ) => {
-    if (!firebaseUser) return;
     const todayStr = new Date().toISOString().split('T')[0];
     const newId = sanitizeId(`req-${Date.now()}`, 'req');
+
+    if (!firebaseUser) {
+      const newReq: InterlibraryRequest = {
+        ...req,
+        id: newId,
+        dataSolicitacao: todayStr,
+        status: 'solicitado',
+      };
+      setDemoRequests((prev) => [newReq, ...prev]);
+      return;
+    }
 
     setDoc(
       doc(db, 'requests', newId),
@@ -1384,9 +1738,51 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     requestId: string,
     status: 'solicitado' | 'em_transito' | 'entregue'
   ) => {
-    if (!firebaseUser) return;
     const targetReq = requests.find((r) => r.id === requestId);
     if (!targetReq || targetReq.status === 'entregue') return;
+
+    if (!firebaseUser) {
+      setDemoRequests((prev) =>
+        prev.map((r) => (r.id === requestId ? { ...r, status } : r))
+      );
+      if (status === 'entregue') {
+        const existing = demoBooks.find(
+          (b) => b.titulo.toLowerCase().trim() === targetReq.titulo.toLowerCase().trim()
+        );
+        if (existing) {
+          setDemoBooks((prev) =>
+            prev.map((b) =>
+              b.id === existing.id
+                ? {
+                    ...b,
+                    totalExemplares: b.totalExemplares + targetReq.quantidade,
+                    disponiveis: b.disponiveis + targetReq.quantidade,
+                    status: 'disponivel',
+                    dataPrevistaChegada: undefined,
+                  }
+                : b
+            )
+          );
+        } else {
+          const newBook: Book = {
+            id: `b-${Date.now()}`,
+            isbn: `978-85${Math.floor(10000000 + Math.random() * 90000000)}`,
+            titulo: targetReq.titulo,
+            autor: targetReq.autor,
+            categoria: 'Fantasia e Aventura',
+            ano: 2026,
+            edicao: '1ª Edição Recebida',
+            localizacao: 'Estante de Lançamentos',
+            totalExemplares: targetReq.quantidade,
+            disponiveis: targetReq.quantidade,
+            status: 'disponivel',
+            descricao: `Exemplar recebido via remessa entre unidades (${targetReq.origemUnidade}).`,
+          };
+          setDemoBooks((prev) => [newBook, ...prev]);
+        }
+      }
+      return;
+    }
 
     const batch = writeBatch(db);
     batch.update(doc(db, 'requests', requestId), {
@@ -1437,6 +1833,13 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const loan = loans.find((l) => l.id === loanId);
     if (!loan || loan.status === 'devolvido' || loan.notificacaoEnviada) return;
 
+    if (!firebaseUser) {
+      setDemoLoans((prev) =>
+        prev.map((l) => (l.id === loanId ? { ...l, notificacaoEnviada: true } : l))
+      );
+      return;
+    }
+
     updateDoc(doc(db, 'loans', loanId), {
       notificacaoEnviada: true,
       updatedAt: serverTimestamp(),
@@ -1444,7 +1847,21 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
   };
 
   const resetDatabase = async () => {
-    if (!firebaseUser || !isAdminUser) return;
+    if (!firebaseUser) {
+      setDemoBooks(INITIAL_BOOKS);
+      setDemoStudents(INITIAL_STUDENTS);
+      setDemoLoans(INITIAL_LOANS);
+      setDemoReservations(INITIAL_RESERVATIONS);
+      setDemoRequests(INITIAL_INTERLIBRARY);
+      localStorage.removeItem(DEMO_STORAGE_KEYS.BOOKS);
+      localStorage.removeItem(DEMO_STORAGE_KEYS.STUDENTS);
+      localStorage.removeItem(DEMO_STORAGE_KEYS.LOANS);
+      localStorage.removeItem(DEMO_STORAGE_KEYS.RESERVATIONS);
+      localStorage.removeItem(DEMO_STORAGE_KEYS.REQUESTS);
+      return;
+    }
+
+    if (!isFirebaseAdmin) return;
     setIsLoadingDb(true);
     try {
       const [booksSnap, studentsSnap, loansSnap, resSnap, reqSnap] = await Promise.all([
@@ -1455,7 +1872,6 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         getDocs(query(collection(db, 'requests'), where('libraryScope', '==', 'bibliotech'))),
       ]);
 
-      // Delete private subcollection docs first while parent student docs still exist
       const privDeleteBatch = writeBatch(db);
       for (const sDoc of studentsSnap.docs) {
         privDeleteBatch.delete(doc(db, 'students', sDoc.id, 'private', 'info'));
@@ -1489,10 +1905,14 @@ export const LibraryProvider: React.FC<{ children: React.ReactNode }> = ({ child
         currentStudent,
         setCurrentStudent,
         isAdminUser,
+        isCloudConnected,
+        isDemoMode,
         authReady,
         isLoadingDb,
         isAuthenticating,
         signInWithGoogle,
+        enterDemoMode,
+        openLoginScreen,
         logout,
         books,
         students,

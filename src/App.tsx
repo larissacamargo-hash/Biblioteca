@@ -33,6 +33,8 @@ const MainContent: React.FC = () => {
   const {
     currentUser,
     isAdminUser,
+    isCloudConnected,
+    isDemoMode,
     authReady,
     isLoadingDb,
     mode,
@@ -58,7 +60,7 @@ const MainContent: React.FC = () => {
   const [isInterlibraryModalOpen, setIsInterlibraryModalOpen] = useState(false);
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
 
-  if (!authReady) {
+  if (!authReady && !isDemoMode) {
     return (
       <div className="min-h-screen bg-[#0B0E14] text-[#F8FAFC] flex flex-col items-center justify-center gap-3 p-6">
         <Loader2 className="w-7 h-7 text-[#FF5C35] animate-spin" />
@@ -73,7 +75,7 @@ const MainContent: React.FC = () => {
     return <LoginPage />;
   }
 
-  if (isLoadingDb && students.length === 0) {
+  if (isCloudConnected && isLoadingDb && students.length === 0) {
     return (
       <div className="min-h-screen bg-[#0B0E14] text-[#F8FAFC] flex flex-col items-center justify-center gap-3 p-6">
         <Loader2 className="w-7 h-7 text-[#FF5C35] animate-spin" />

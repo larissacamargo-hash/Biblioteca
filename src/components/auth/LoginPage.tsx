@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 
 export const LoginPage: React.FC = () => {
-  const { signInWithGoogle, books, isAuthenticating } = useLibrary();
+  const { signInWithGoogle, enterDemoMode, books, isAuthenticating } = useLibrary();
 
   const [activeTab, setActiveTab] = useState<'aluno' | 'bibliotecaria'>('aluno');
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
@@ -26,6 +26,11 @@ export const LoginPage: React.FC = () => {
     if (!res.success) {
       setErrorMsg(res.message);
     }
+  };
+
+  const handleFreeAccess = () => {
+    setErrorMsg(null);
+    enterDemoMode(activeTab === 'aluno' ? 'student' : 'librarian');
   };
 
   return (
@@ -230,6 +235,25 @@ export const LoginPage: React.FC = () => {
                 </div>
               </div>
             )}
+
+            {/* Free Test Access (No Login Required) */}
+            <div className="pt-4 border-t border-white/[0.08] space-y-2.5">
+              <button
+                type="button"
+                onClick={handleFreeAccess}
+                className="w-full py-3 px-4 text-xs font-semibold text-slate-200 bg-[#181D2A] hover:bg-[#22293A] hover:text-white border border-white/10 rounded-xl transition-colors duration-150 flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
+              >
+                <BookOpen className="w-4 h-4 text-[#FF6B47] shrink-0" />
+                <span>
+                  {activeTab === 'aluno'
+                    ? 'Testar Acesso Livre como Leitor (Sem Login)'
+                    : 'Testar Acesso Livre na Gestão (Sem Login)'}
+                </span>
+              </button>
+              <p className="text-[11px] text-center text-slate-500">
+                Explore todo o catálogo, reservas e empréstimos livremente no navegador.
+              </p>
+            </div>
           </div>
         </div>
       </div>
